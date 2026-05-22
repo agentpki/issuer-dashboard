@@ -60,18 +60,53 @@ export default async function IssuerDetail({
       ) : (
         <div className="card">
           <p className="muted" style={{ marginTop: 0 }}>
-            Publish the following TXT record on your DNS, then click verify.
+            Publish the following TXT record on your DNS provider (Cloudflare,
+            Route 53, etc.), then click verify.
+          </p>
+          <p className="dim small" style={{ marginTop: '0.5rem' }}>
+            At Cloudflare DNS, the <strong>Name</strong> field is just{' '}
+            <code>_agentpki</code> (Cloudflare auto-appends the zone). The{' '}
+            <strong>Content</strong> field is the long token below (no quotes).
           </p>
           <pre style={{ marginBottom: '1rem' }}>
-{`_agentpki.${iss.domain}.   IN TXT   "${proof?.challengeToken ?? 'no-challenge-yet'}"`}
+{`Type:    TXT
+Name:    _agentpki         (CF auto-appends ".${iss.domain}")
+Content: ${proof?.challengeToken ?? 'no-challenge-yet'}
+TTL:     Auto`}
           </pre>
           <p className="dim" style={{ fontSize: '0.875rem' }}>
-            Propagation is usually under 60 seconds. Verification checks the record via
-            public DNS (1.1.1.1, 8.8.8.8) to bypass local caching.
+            Propagation is usually under 60 seconds. Verification queries
+            Cloudflare DNS (1.1.1.1) directly to bypass local caching.
           </p>
+
+          {proof?.failureReason && (
+            <div
+              style={{
+                marginTop: '1rem',
+                padding: '0.75rem 1rem',
+                background: 'rgba(248, 113, 113, 0.08)',
+                border: '1px solid rgba(248, 113, 113, 0.4)',
+                borderRadius: '0.5rem',
+                fontSize: '0.875rem',
+              }}
+            >
+              <p style={{ margin: 0, color: 'var(--danger)', fontWeight: 500 }}>
+                Last verification attempt failed
+              </p>
+              <p style={{ margin: '0.25rem 0 0', color: 'var(--text-muted)' }}>
+                {proof.failureReason}
+              </p>
+              {proof.attemptedAt && (
+                <p style={{ margin: '0.25rem 0 0', color: 'var(--text-dim)', fontSize: '0.75rem' }}>
+                  Tried at {proof.attemptedAt.toISOString()}
+                </p>
+              )}
+            </div>
+          )}
+
           <form action={verifyDomain.bind(null, iss.id)} style={{ marginTop: '1rem' }}>
             <button type="submit" className="primary">
-              I've added the record — verify now
+              {proof?.failureReason ? 'Retry verification' : "I've added the record — verify now"}
             </button>
           </form>
         </div>
