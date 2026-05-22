@@ -9,6 +9,20 @@ export default async function Home() {
   if (session?.user) redirect('/dashboard');
 
   return (
+    <>
+      <nav className="nav">
+        <div className="container nav-inner">
+          <Link href="/" style={{ fontWeight: 500 }}>
+            AgentPKI Dashboard
+          </Link>
+          <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center', fontSize: '0.875rem' }}>
+            <Link href="https://agentpki.dev" className="dim">agentpki.dev</Link>
+            <Link href="https://agentpki.dev/spec/v0.1" className="dim">Spec</Link>
+            <Link href="https://github.com/agentpki" className="dim">GitHub</Link>
+            <a href="#signin" className="btn primary" style={{ padding: '0.375rem 0.875rem' }}>Sign in</a>
+          </div>
+        </div>
+      </nav>
     <div className="container" style={{ paddingTop: '4rem' }}>
       <h1 style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>AgentPKI Issuer Dashboard</h1>
       <p className="muted" style={{ fontSize: '1.125rem', maxWidth: '40rem' }}>
@@ -18,6 +32,7 @@ export default async function Home() {
       </p>
 
       <form
+        id="signin"
         action={async (formData: FormData) => {
           'use server';
           const email = String(formData.get('email') ?? '').trim();
@@ -48,5 +63,6 @@ export default async function Home() {
         &nbsp;·&nbsp; Source: <Link href="https://github.com/agentpki">github.com/agentpki</Link>
       </p>
     </div>
+    </>
   );
 }
