@@ -6,8 +6,8 @@
 import NextAuth from 'next-auth';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import { Resend } from 'resend';
-import { db } from './db/index.js';
-import { users, accounts, sessions, verificationTokens } from './db/schema.js';
+import { db } from './db';
+import { users, accounts, sessions, verificationTokens } from './db/schema';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 

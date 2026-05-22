@@ -1,41 +1,27 @@
 // Postgres client — Neon serverless driver + Drizzle ORM.
 //
-// The Neon driver is HTTP-based (no persistent TCP connections), which
-// matches Next.js serverless / edge deployment perfectly.
+// The Neon driver is HTTP-based (no persistent TCP connections), so the
+// `neon(url)` call doesn't actually connect — it just stores the URL.
+// Real connections happen on the first query. This means we can hand a
+// placeholder URL to Drizzle at module load WITHOUT breaking the build,
+// even when DATABASE_URL isn't set in the build environment.
 //
-// IMPORTANT: We use a Proxy + lazy initialization so importing this module
-// does NOT throw at build time if DATABASE_URL is missing. Next.js traces
-// module imports during `next build`; a thrown error in module scope kills
-// the build even when the page wouldn't actually run at build time.
-// The DB connects on the first `db.<anything>` property access.
+// Pages that actually run a query at runtime will hit the real DATABASE_URL
+// (which Vercel passes through to runtime env). If DATABASE_URL is missing
+// at runtime, the query fails with a clear connection error.
 
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
-import * as schema from './schema.js';
+import * as schema from './schema';
 
-type DrizzleDb = ReturnType<typeof drizzle<typeof schema>>;
+const url =
+  process.env.DATABASE_URL ??
+  // Placeholder — only used during builds where DATABASE_URL isn't set.
+  // Runtime always uses the real env var; if it's missing, queries fail
+  // with a clear connection error rather than crashing the build.
+  'postgres://build_only:build_only@localhost:5432/build_only';
 
-let _db: DrizzleDb | null = null;
+const sql = neon(url);
+export const db = drizzle(sql, { schema });
 
-function getDb(): DrizzleDb {
-  if (_db) return _db;
-  const url = process.env.DATABASE_URL;
-  if (!url) {
-    throw new Error(
-      'DATABASE_URL is not set. See .env.example for the format. ' +
-        'In Vercel: Project Settings → Environment Variables.',
-    );
-  }
-  _db = drizzle(neon(url), { schema });
-  return _db;
-}
-
-// Proxy preserves the same `db.select(...)`, `db.insert(...)`, etc. call sites
-// while deferring real initialization until first access.
-export const db = new Proxy({} as DrizzleDb, {
-  get(_target, prop, receiver) {
-    return Reflect.get(getDb(), prop, receiver);
-  },
-}) as DrizzleDb;
-
-export * from './schema.js';
+export * from './schema';
