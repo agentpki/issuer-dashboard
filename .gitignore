@@ -1,0 +1,15 @@
+node_modules
+.next
+.vercel
+out
+*.log
+.DS_Store
+
+# env
+.env
+.env.local
+.env*.local
+!.env.example
+
+# drizzle generated
+drizzle/meta
