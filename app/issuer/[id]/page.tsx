@@ -140,6 +140,7 @@ TTL:     Auto`}
                 <th>Algorithm</th>
                 <th>Valid from / to</th>
                 <th>Status</th>
+                <th>Private key</th>
               </tr>
             </thead>
             <tbody>
@@ -156,6 +157,15 @@ TTL:     Auto`}
                       <span style={{ color: 'var(--danger)' }}>Revoked</span>
                     ) : (
                       <span style={{ color: 'var(--success)' }}>Active</span>
+                    )}
+                  </td>
+                  <td>
+                    {k.revokedAt ? (
+                      <span className="dim small">—</span>
+                    ) : (
+                      <Link href={`/issuer/${iss.id}/key/${k.kid}/reveal`}>
+                        Reveal →
+                      </Link>
                     )}
                   </td>
                 </tr>
@@ -191,8 +201,8 @@ KID               = "${activeKey.kid}"
 KEY_VALID_FROM    = "${Math.floor(activeKey.validFrom.getTime() / 1000)}"
 KEY_VALID_TO      = "${Math.floor(activeKey.validTo.getTime() / 1000)}"
 
-# private key (download from the link below; treat as secret):
-ISSUER_PRIVATE_KEY_HEX = <download via "Reveal" button below>`}
+# private key (treat as secret — set via wrangler secret put):
+ISSUER_PRIVATE_KEY_HEX = <click "Reveal →" in the keys table above>`}
           </pre>
 
           <h3>Path B — static JSON (verifier-only, no minting)</h3>
