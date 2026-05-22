@@ -3,6 +3,9 @@ import { auth } from '@/lib/auth';
 import { db, issuers } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 
+// Per-user data — never pre-render; always run on request
+export const dynamic = 'force-dynamic';
+
 export default async function Dashboard() {
   const session = await auth();
   if (!session?.user?.id) return null;

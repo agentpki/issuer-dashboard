@@ -5,6 +5,8 @@ import { eq, and, desc, isNull } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
 import { generateKey, verifyDomain } from './actions';
 
+export const dynamic = 'force-dynamic';
+
 export default async function IssuerDetail({
   params,
 }: {
