@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@agentpki/sdk':
-        specifier: file:../sdk-typescript
-        version: file:../sdk-typescript
+        specifier: 0.1.0-alpha.1
+        version: 0.1.0-alpha.1
       '@auth/drizzle-adapter':
         specifier: ^1.7.4
         version: 1.11.2
@@ -57,8 +57,8 @@ importers:
 
 packages:
 
-  '@agentpki/sdk@file:../sdk-typescript':
-    resolution: {directory: ../sdk-typescript, type: directory}
+  '@agentpki/sdk@0.1.0-alpha.1':
+    resolution: {integrity: sha512-jY897S9mvY+olTaJqQt4o5tgRpN/Yjq49xNkRi2zHHr4n4k74mev4z8sXmrZsbod50TBpWBf4dTED8Pgp6ByGA==}
     engines: {node: '>=18.17'}
 
   '@auth/core@0.37.2':
@@ -1012,7 +1012,7 @@ packages:
 
 snapshots:
 
-  '@agentpki/sdk@file:../sdk-typescript':
+  '@agentpki/sdk@0.1.0-alpha.1':
     dependencies:
       '@noble/curves': 1.9.7
 

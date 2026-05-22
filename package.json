@@ -14,7 +14,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@agentpki/sdk": "file:../sdk-typescript",
+    "@agentpki/sdk": "0.1.0-alpha.1",
     "@auth/drizzle-adapter": "^1.7.4",
     "@neondatabase/serverless": "^0.10.4",
     "drizzle-orm": "^0.36.4",
