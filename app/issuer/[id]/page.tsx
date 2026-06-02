@@ -7,6 +7,7 @@ import { generateKey, verifyDomain, deleteIssuer } from './actions';
 import { SubmitButton } from '@/components/SubmitButton';
 import { OsTabs } from '@/components/OsTabs';
 import { CopyBlock } from '@/components/CopyBlock';
+import { Tabs } from '@/components/Tabs';
 
 export const dynamic = 'force-dynamic';
 
@@ -338,19 +339,30 @@ TTL:     Auto`}
             </p>
           </div>
 
-          <h3 style={{ marginTop: '2rem' }}>Path A — fork the real-issuer Worker (recommended)</h3>
+          <h3 style={{ marginTop: '2rem' }}>Path A — deploy a real issuer (mint + verify)</h3>
           <p>
-            <strong>What you'll get:</strong> a Worker at <code>{iss.domain}</code> that exposes{' '}
-            <code>/.well-known/agentpki-issuer.json</code> (the directory),{' '}
-            <code>/.well-known/agentpki-crl.json</code> (the revocation list),{' '}
-            <code>/mint</code> (mint passports for your agents), and{' '}
-            <code>/abuse</code> (abuse-report intake). Full spec §3-§7 compliant.
+            <strong>What you'll get:</strong> a server at <code>{iss.domain}</code> that exposes{' '}
+            <code>/.well-known/agentpki-issuer.json</code> (the directory) and{' '}
+            <code>/mint</code> (issues passports to your agents). Pick your host — same end
+            result, different deploy mechanics:
           </p>
-          <p className="muted">
-            <strong>Time:</strong> about 5 minutes with the one-paste bootstrap below.
-          </p>
+          <Tabs
+            storageKey="agentpki-host-pref"
+            defaultId="cf"
+            tabs={[
+              {
+                id: 'cf',
+                label: '☁  Cloudflare Workers  (recommended — 3 min)',
+                content: (
+                  <>
+                  <p className="muted" style={{ marginTop: 0 }}>
+                    <strong>Why recommended:</strong> the <code>real-issuer</code> template
+                    ships with KV state, CRL endpoint, abuse intake, and a complete{' '}
+                    <code>wrangler.toml</code> — full spec §3-§7 compliant out of the box.
+                    One paste deploys everything.
+                  </p>
 
-          {/* ─── ONE-PASTE BOOTSTRAP — preferred for tomorrow's HN visitors ─── */}
+                  {/* ─── ONE-PASTE BOOTSTRAP — preferred for tomorrow's HN visitors ─── */}
           <div
             className="card"
             style={{
@@ -1011,35 +1023,32 @@ $verify`}
               <code>wrangler tail</code> output and we'll unblock you.
             </p>
           </div>
+                  </>
+                ),
+              },
+              {
+                id: 'node',
+                label: '🌐  Vercel / Render / Fly / AWS / Other Node.js host',
+                content: (
+                  <>
+                  <p className="muted" style={{ marginTop: 0 }}>
+                    AgentPKI is host-agnostic. If you're on AWS / GCP / Vercel / Fly / Render /
+                    Railway / your own VPS, you can still mint passports — you just write a
+                    tiny server using the SDK directly and deploy it where you already deploy
+                    code. Total LOC: ~30.
+                  </p>
+                  <p className="dim small" style={{ marginTop: 0 }}>
+                    <strong>What this skips vs. Cloudflare:</strong> no KV-backed CRL endpoint,
+                    no built-in abuse intake. Both are v0.2 extensions you can add later
+                    (~50 LOC each) — see <a href="https://github.com/agentpki/real-issuer/tree/main/src">
+                      real-issuer/src
+                    </a> for reference. For v0.1 verifier conformance, directory + mint is
+                    enough.
+                  </p>
 
-          {/* ─── Path A* — non-Cloudflare alternatives ─── */}
-          <h3 style={{ marginTop: '2rem' }}>Not on Cloudflare? Here's how to mint anywhere</h3>
-          <p className="muted">
-            Path A above is opinionated on Cloudflare Workers because it ships a complete
-            production stack out of the box — Worker, KV namespace, custom domain, edge TLS.
-            If you're on AWS / GCP / Vercel / Fly / Render / Railway / your own VPS, you can
-            still mint AgentPKI passports — you just write a tiny server using the SDK directly
-            and deploy it wherever you already deploy code. Total LOC: ~30.
-          </p>
-          <p className="dim small">
-            <strong>The protocol is host-agnostic.</strong> The only thing the Worker does is
-            (a) load the signing key, (b) accept HTTP requests, (c) call{' '}
-            <code>signPassport</code> from <code>@agentpki/sdk</code>. Any HTTP server in any
-            language with Ed25519 support can do the same.
-          </p>
-
-          <div
-            className="card"
-            style={{
-              background: 'rgba(96, 165, 250, 0.04)',
-              border: '1px solid rgba(96, 165, 250, 0.25)',
-              marginTop: '1rem',
-              marginBottom: '1rem',
-            }}
-          >
-            <h4 style={{ marginTop: 0, fontSize: '0.9375rem' }}>
-              Minimal Node.js mint server (deploys on anything that runs Node)
-            </h4>
+                  <h4 style={{ marginTop: '1rem', fontSize: '0.9375rem' }}>
+                    Minimal Node.js mint server (deploys on anything that runs Node)
+                  </h4>
             <p className="dim small" style={{ marginTop: '0.25rem', marginBottom: '0.5rem' }}>
               Save as <code>server.js</code>, set the env vars, run{' '}
               <code>node server.js</code>. Deploy to{' '}
@@ -1183,13 +1192,11 @@ http.createServer(async (req, res) => {
               </a> for reference implementations of each route in &lt;50 lines each.
             </p>
           </div>
-
-          <p className="muted" style={{ marginTop: '1rem' }}>
-            <strong>The TL;DR:</strong> Cloudflare is the path of least resistance because the
-            template handles every detail. But there's nothing Cloudflare-specific about{' '}
-            <strong>AgentPKI itself</strong> — every verifier on the web will validate a
-            passport signed correctly, regardless of where the issuer is hosted.
-          </p>
+                  </>
+                ),
+              },
+            ]}
+          />
 
           <h3 style={{ marginTop: '2rem' }}>Path B — static JSON (verify-only, no minting)</h3>
           <p>
