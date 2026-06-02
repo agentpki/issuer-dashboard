@@ -9,7 +9,17 @@ import { Resend } from 'resend';
 import { db } from './db';
 import { users, accounts, sessions, verificationTokens } from './db/schema';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy-init Resend so module load doesn't throw when RESEND_API_KEY is absent
+// (e.g. during `next build` page-data collection, where env vars from Vercel
+// aren't injected). The constructor is cheap; reuse the instance across calls.
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (_resend) return _resend;
+  const key = process.env.RESEND_API_KEY;
+  if (!key) throw new Error('RESEND_API_KEY is not set');
+  _resend = new Resend(key);
+  return _resend;
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: DrizzleAdapter(db, {
@@ -32,7 +42,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // to the same recipient lands in Spam / Promotions / All Mail instead of Inbox.
         const code = shortCode();
         const sentAtUtc = new Date().toUTCString();
-        const { error } = await resend.emails.send({
+        const { error } = await getResend().emails.send({
           from: provider.from ?? 'AgentPKI <hello@agentpki.dev>',
           to: identifier,
           subject: `Sign in to AgentPKI — code ${code}`,
