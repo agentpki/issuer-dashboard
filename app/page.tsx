@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { SubmitButton } from '@/components/SubmitButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,9 +74,13 @@ export default async function Home() {
           placeholder="you@your-company.com"
           style={{ marginBottom: '0.75rem' }}
         />
-        <button type="submit" className="primary" style={{ width: '100%' }}>
+        <SubmitButton
+          variant="primary"
+          style={{ width: '100%', justifyContent: 'center' }}
+          pendingChildren={<>Sending magic link…</>}
+        >
           Send magic link
-        </button>
+        </SubmitButton>
       </form>
 
       <p className="dim" style={{ marginTop: '2rem' }}>

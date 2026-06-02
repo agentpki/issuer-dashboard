@@ -4,8 +4,15 @@ import { db, issuers, issuerKeys, domainProofs } from '@/lib/db';
 import { eq, and, desc, isNull } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
 import { generateKey, verifyDomain, deleteIssuer } from './actions';
+import { SubmitButton } from '@/components/SubmitButton';
 
 export const dynamic = 'force-dynamic';
+
+// Only show the failure banner if the user JUST attempted verification.
+// After this window, we treat it as stale state from a prior session and
+// suppress the banner — the user wanted a "fresh" page on revisit.
+// DB row stays put for forensic purposes; we just don't render it.
+const FAILURE_BANNER_TTL_MS = 2 * 60 * 1000; // 2 minutes
 
 export default async function IssuerDetail({
   params,
@@ -33,6 +40,13 @@ export default async function IssuerDetail({
 
   const activeKey = keys[0];
   const fqdn = `https://${iss.domain}`;
+
+  // Only show failure banner for fresh attempts. Stale failures from prior
+  // sessions are suppressed so revisiting the page feels clean.
+  const showFailureBanner =
+    proof?.failureReason &&
+    proof.attemptedAt &&
+    Date.now() - proof.attemptedAt.getTime() < FAILURE_BANNER_TTL_MS;
 
   return (
     <>
@@ -79,7 +93,7 @@ TTL:     Auto`}
             Cloudflare DNS (1.1.1.1) directly to bypass local caching.
           </p>
 
-          {proof?.failureReason && (
+          {showFailureBanner && (
             <div
               style={{
                 marginTop: '1rem',
@@ -94,9 +108,9 @@ TTL:     Auto`}
                 Last verification attempt failed
               </p>
               <p style={{ margin: '0.25rem 0 0', color: 'var(--text-muted)' }}>
-                {proof.failureReason}
+                {proof?.failureReason}
               </p>
-              {proof.attemptedAt && (
+              {proof?.attemptedAt && (
                 <p style={{ margin: '0.25rem 0 0', color: 'var(--text-dim)', fontSize: '0.75rem' }}>
                   Tried at {proof.attemptedAt.toISOString()}
                 </p>
@@ -105,9 +119,12 @@ TTL:     Auto`}
           )}
 
           <form action={verifyDomain.bind(null, iss.id)} style={{ marginTop: '1rem' }}>
-            <button type="submit" className="primary">
-              {proof?.failureReason ? 'Retry verification' : "I've added the record — verify now"}
-            </button>
+            <SubmitButton
+              variant="primary"
+              pendingChildren={<>Querying DNS at Cloudflare (1.1.1.1)…</>}
+            >
+              {showFailureBanner ? 'Retry verification' : "I've added the record — verify now"}
+            </SubmitButton>
           </form>
         </div>
       )}
@@ -121,14 +138,13 @@ TTL:     Auto`}
             stored AES-256-GCM-encrypted at rest. The private key never leaves the server.
           </p>
           <form action={generateKey.bind(null, iss.id)}>
-            <button
-              type="submit"
-              className="primary"
+            <SubmitButton
+              variant="primary"
               disabled={!iss.domainVerified}
-              style={!iss.domainVerified ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+              pendingChildren={<>Generating Ed25519 keypair…</>}
             >
               {iss.domainVerified ? 'Generate first signing key' : 'Verify domain first'}
-            </button>
+            </SubmitButton>
           </form>
         </div>
       ) : (
@@ -174,7 +190,9 @@ TTL:     Auto`}
           </table>
 
           <form action={generateKey.bind(null, iss.id)} style={{ marginTop: '1rem' }}>
-            <button type="submit">+ Generate new key (rotation)</button>
+            <SubmitButton pendingChildren={<>Generating Ed25519 keypair…</>}>
+              + Generate new key (rotation)
+            </SubmitButton>
           </form>
         </div>
       )}
@@ -182,16 +200,90 @@ TTL:     Auto`}
       {/* ─── Step 3: well-known directory ─── */}
       {activeKey && (
         <>
-          <h2>3. Publish the well-known directory</h2>
-          <p className="muted">
-            Two paths to serve the directory at <code>{fqdn}/.well-known/agentpki-issuer.json</code>:
-          </p>
+          <h2>3. Publish your well-known directory</h2>
 
-          <h3>Path A — fork the real-issuer Worker (recommended)</h3>
+          {/* What this is + why it matters — the explainer that was missing */}
+          <div
+            className="card"
+            style={{
+              background: 'rgba(167, 139, 250, 0.04)',
+              border: '1px solid rgba(167, 139, 250, 0.25)',
+              marginBottom: '1.5rem',
+            }}
+          >
+            <h3 style={{ marginTop: 0, fontSize: '1rem' }}>What this step does</h3>
+            <p className="muted" style={{ marginTop: '0.5rem' }}>
+              Any verifier (a site, an API, a bot-defense vendor) that receives a passport
+              signed by your issuer needs to <strong>fetch your public key</strong> to check
+              the signature. By convention, they look at one URL:
+            </p>
+            <p style={{ margin: '0.5rem 0' }}>
+              <code style={{ fontSize: '0.875rem' }}>{fqdn}/.well-known/agentpki-issuer.json</code>
+            </p>
+            <p className="muted" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+              You publish a JSON file at that path that lists your active keys (with the{' '}
+              <code>kid</code> and SPKI base64 public key), your CRL URL, and an abuse contact.
+              After this step, your issuer is fully live on the internet: agents can mint
+              passports against it, and <strong>every verifier on the web can validate them</strong>{' '}
+              without you needing to talk to anyone.
+            </p>
+          </div>
+
+          {/* Decision guide */}
+          <h3 style={{ marginTop: '2rem' }}>Pick a path</h3>
+          <p className="muted">
+            Two ways to host the directory. Pick based on what you need:
+          </p>
+          <div className="card" style={{ marginBottom: '1.5rem' }}>
+            <table>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Path A — real-issuer Worker</th>
+                  <th>Path B — static JSON</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="dim">Can mint new passports?</td>
+                  <td>✓ Yes — agents call your <code>/mint</code> endpoint</td>
+                  <td>No — verify-only</td>
+                </tr>
+                <tr>
+                  <td className="dim">Setup time</td>
+                  <td>~10 min (clone + secrets + deploy)</td>
+                  <td>~2 min (paste JSON, deploy any static host)</td>
+                </tr>
+                <tr>
+                  <td className="dim">Runs where?</td>
+                  <td>Cloudflare Workers (free tier OK)</td>
+                  <td>Any static host (Vercel, Netlify, S3, GitHub Pages)</td>
+                </tr>
+                <tr>
+                  <td className="dim">Use this if…</td>
+                  <td>You're operating real agents that need passports</td>
+                  <td>You only need to be on the directory (your keys live elsewhere)</td>
+                </tr>
+              </tbody>
+            </table>
+            <p className="dim small" style={{ marginTop: '0.75rem', marginBottom: 0 }}>
+              <strong>Most users want Path A.</strong> Path B is mainly for verifier-only setups
+              (e.g., a publisher who wants their identity in the directory but doesn't mint).
+            </p>
+          </div>
+
+          <h3 style={{ marginTop: '2rem' }}>Path A — fork the real-issuer Worker (recommended)</h3>
           <p>
-            Deploys at <code>{iss.domain}</code> with full mint + CRL endpoints. See{' '}
-            <a href="https://github.com/agentpki/real-issuer">github.com/agentpki/real-issuer</a>{' '}
-            for setup. You'll need:
+            <strong>What you'll do:</strong> clone{' '}
+            <a href="https://github.com/agentpki/real-issuer">github.com/agentpki/real-issuer</a>,
+            set the values below as Cloudflare secrets, run <code>wrangler deploy</code>. Takes
+            about 10 minutes end-to-end.
+          </p>
+          <p>
+            <strong>What you'll get:</strong> a Worker at <code>{iss.domain}</code> that exposes{' '}
+            <code>/.well-known/agentpki-issuer.json</code> (the directory), <code>/.well-known/agentpki-crl.json</code> (the
+            revocation list), <code>/mint</code> (mint passports for your agents), and{' '}
+            <code>/abuse</code> (abuse-report intake). Full spec §3-§7 compliant.
           </p>
           <pre>
 {`ISSUER_DOMAIN     = "${iss.domain}"
@@ -204,10 +296,23 @@ KEY_VALID_TO      = "${Math.floor(activeKey.validTo.getTime() / 1000)}"
 # private key (treat as secret — set via wrangler secret put):
 ISSUER_PRIVATE_KEY_HEX = <click "Reveal →" in the keys table above>`}
           </pre>
+          <p className="dim small">
+            After deploy, test by fetching <code>https://{iss.domain}/.well-known/agentpki-issuer.json</code>{' '}
+            in your browser — you should see the JSON below. Then mint a test passport via{' '}
+            <code>curl https://{iss.domain}/mint?sub=test&scope=read</code>.
+          </p>
 
-          <h3>Path B — static JSON (verifier-only, no minting)</h3>
+          <h3 style={{ marginTop: '2rem' }}>Path B — static JSON (verify-only, no minting)</h3>
           <p>
-            Host this JSON file at <code>{fqdn}/.well-known/agentpki-issuer.json</code>:
+            <strong>What you'll do:</strong> host the JSON file below at{' '}
+            <code>{fqdn}/.well-known/agentpki-issuer.json</code> on any static host. No Worker
+            needed.
+          </p>
+          <p>
+            <strong>What this gets you:</strong> verifiers can validate passports signed by your
+            key. <strong>You will NOT be able to mint new passports through this URL</strong> —
+            you'd need to sign tokens yourself (using the SDK's <code>mintPassport()</code> or
+            your own service) and distribute them out-of-band.
           </p>
           <pre>
 {JSON.stringify(
@@ -237,9 +342,44 @@ ISSUER_PRIVATE_KEY_HEX = <click "Reveal →" in the keys table above>`}
 )}
           </pre>
           <p className="dim small">
-            Path B is read-only — verifiers can verify passports signed by your key, but
-            you'll need to host the minting endpoint separately. Path A is recommended.
+            After publishing, test by visiting <code>https://{iss.domain}/.well-known/agentpki-issuer.json</code>{' '}
+            in your browser. Once it returns this JSON, your issuer is discoverable by every
+            verifier on the web — including <code>verify.agentpki.dev</code>. Try minting a token
+            with the SDK locally and send it to the verifier to confirm.
           </p>
+
+          {/* What happens next */}
+          <h3 style={{ marginTop: '2rem' }}>What happens after you publish</h3>
+          <div className="card">
+            <ol style={{ margin: 0, paddingLeft: '1.25rem' }}>
+              <li style={{ marginBottom: '0.5rem' }}>
+                <strong>Your agents start minting passports</strong> against your issuer (via
+                Path A's <code>/mint</code> endpoint, or via the SDK's <code>mintPassport()</code>{' '}
+                using your private key).
+              </li>
+              <li style={{ marginBottom: '0.5rem' }}>
+                <strong>Sites and APIs receive those passports</strong> on incoming requests and
+                send them to a verifier (e.g. <code>verify.agentpki.dev</code> or one they host
+                themselves).
+              </li>
+              <li style={{ marginBottom: '0.5rem' }}>
+                <strong>The verifier fetches your directory</strong> at{' '}
+                <code>{fqdn}/.well-known/agentpki-issuer.json</code>, checks the Ed25519
+                signature against the public key listed there, consults your CRL if you have one,
+                and returns a verdict.
+              </li>
+              <li style={{ marginBottom: '0.5rem' }}>
+                <strong>Bot-defense vendors</strong> (Cloudflare, DataDome, hCaptcha, etc.) can
+                use that verdict as a signal in their existing decision pipelines — see the{' '}
+                <a href="https://github.com/agentpki/bot-defense-reference">~30 LOC reference integration</a>.
+              </li>
+            </ol>
+            <p className="dim small" style={{ marginTop: '1rem', marginBottom: 0 }}>
+              At that point your organization has a public, verifiable identity for the AI agents
+              it operates — no shared secrets, no central authority, just standards-grade
+              cryptography.
+            </p>
+          </div>
         </>
       )}
 
@@ -268,20 +408,12 @@ ISSUER_PRIVATE_KEY_HEX = <click "Reveal →" in the keys table above>`}
             correct root domain.
           </p>
           <form action={deleteIssuer.bind(null, iss.id)} style={{ marginTop: '1rem' }}>
-            <button
-              type="submit"
-              style={{
-                background: 'rgba(248, 113, 113, 0.15)',
-                color: 'var(--danger)',
-                border: '1px solid rgba(248, 113, 113, 0.5)',
-                padding: '0.5rem 1rem',
-                borderRadius: '0.375rem',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-              }}
+            <SubmitButton
+              variant="danger"
+              pendingChildren={<>Deleting issuer…</>}
             >
               Delete issuer {iss.domain}
-            </button>
+            </SubmitButton>
           </form>
         </div>
       </details>

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { createIssuer } from './actions';
+import { SubmitButton } from '@/components/SubmitButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,9 +64,13 @@ export default async function NewIssuer() {
           </p>
         </div>
 
-        <button type="submit" className="primary" style={{ width: '100%' }}>
+        <SubmitButton
+          variant="primary"
+          style={{ width: '100%', justifyContent: 'center' }}
+          pendingChildren={<>Registering issuer…</>}
+        >
           Register issuer
-        </button>
+        </SubmitButton>
       </form>
     </>
   );
