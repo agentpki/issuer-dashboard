@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { auth, signIn } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import { db } from '@/lib/db';
+import { users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,9 +38,26 @@ export default async function Home() {
         id="signin"
         action={async (formData: FormData) => {
           'use server';
-          const email = String(formData.get('email') ?? '').trim();
+          const email = String(formData.get('email') ?? '').trim().toLowerCase();
           if (!email) return;
-          await signIn('resend-magic-link', { email, redirectTo: '/dashboard' });
+          // Look up before signIn so we can route to a status-specific check-email page.
+          // NextAuth's flow itself doesn't differentiate new vs returning users in its
+          // post-send redirect — we layer that distinction here.
+          const existing = await db
+            .select({ id: users.id })
+            .from(users)
+            .where(eq(users.email, email))
+            .limit(1);
+          const status = existing.length > 0 ? 'resent' : 'new';
+          // redirect: false → don't auto-redirect to NextAuth's verify page,
+          // we'll redirect manually so we can append the status query param.
+          // redirectTo is what gets baked into the magic link itself (post-click).
+          await signIn('resend-magic-link', {
+            email,
+            redirect: false,
+            redirectTo: '/dashboard',
+          });
+          redirect(`/auth/check-email?status=${status}`);
         }}
         className="card"
         style={{ maxWidth: '32rem', marginTop: '2rem' }}

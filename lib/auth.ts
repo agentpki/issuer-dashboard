@@ -27,12 +27,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       from: process.env.EMAIL_FROM ?? 'hello@agentpki.dev',
       maxAge: 24 * 60 * 60, // 24h magic-link validity
       sendVerificationRequest: async ({ identifier, url, provider }) => {
+        // Vary subject per-send so Gmail's duplicate-detection / promotions-clustering
+        // doesn't bury repeat sign-in attempts. Without this, the second magic link
+        // to the same recipient lands in Spam / Promotions / All Mail instead of Inbox.
+        const code = shortCode();
+        const sentAtUtc = new Date().toUTCString();
         const { error } = await resend.emails.send({
-          from: provider.from ?? 'hello@agentpki.dev',
+          from: provider.from ?? 'AgentPKI <hello@agentpki.dev>',
           to: identifier,
-          subject: 'Sign in to AgentPKI',
-          html: magicLinkHtml(url),
-          text: magicLinkText(url),
+          subject: `Sign in to AgentPKI — code ${code}`,
+          html: magicLinkHtml(url, code, sentAtUtc),
+          text: magicLinkText(url, code, sentAtUtc),
+          headers: {
+            // Tells Gmail this is transactional, not bulk — bypasses Promotions clustering.
+            'X-Entity-Ref-ID': code,
+            'List-Unsubscribe': '<mailto:hello@agentpki.dev?subject=unsubscribe>',
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          },
         });
         if (error) throw new Error(`Resend error: ${error.message}`);
       },
@@ -44,7 +55,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
 });
 
-function magicLinkHtml(url: string): string {
+function magicLinkHtml(url: string, code: string, sentAtUtc: string): string {
   return `
     <!DOCTYPE html>
     <html><body style="font-family:system-ui,sans-serif;max-width:520px;margin:40px auto;color:#1c1c20;">
@@ -55,10 +66,21 @@ function magicLinkHtml(url: string): string {
       </p>
       <p style="font-size:13px;color:#6b6b78;">If you didn't request this email, you can ignore it.</p>
       <p style="font-size:11px;color:#9c9cab;margin-top:32px;">AgentPKI · cryptographic identity for AI agents · agentpki.dev</p>
+      <p style="font-size:11px;color:#c0c0c8;margin-top:8px;">Request code: ${code} · ${sentAtUtc}</p>
     </body></html>
   `;
 }
 
-function magicLinkText(url: string): string {
-  return `Sign in to AgentPKI:\n\n${url}\n\nThis link expires in 24 hours and works once.`;
+function magicLinkText(url: string, code: string, sentAtUtc: string): string {
+  return `Sign in to AgentPKI:\n\n${url}\n\nThis link expires in 24 hours and works once.\n\nRequest code: ${code}\nSent: ${sentAtUtc}`;
+}
+
+// Short random alphanumeric code — purely to differentiate Subject lines
+// between consecutive sign-in attempts so Gmail doesn't cluster duplicates.
+// NOT cryptographic; the magic-link token already provides security.
+function shortCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // unambiguous (no 0/O/1/I)
+  const bytes = new Uint8Array(4);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => chars[b % chars.length]).join('');
 }
