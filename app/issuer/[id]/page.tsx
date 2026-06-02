@@ -343,26 +343,29 @@ TTL:     Auto`}
             </p>
           </div>
 
-          <h3
-            style={{
-              marginTop: '2rem',
-              fontWeight: 700,
-              color: 'rgb(196, 181, 253)',
-              display: 'inline-block',
-              padding: '0.375rem 0.875rem',
-              background: 'rgba(167, 139, 250, 0.15)',
-              border: '1px solid rgba(167, 139, 250, 0.4)',
-              borderRadius: '0.5rem',
-            }}
-          >
-            Path A — deploy a real issuer (mint + verify)
-          </h3>
-          <p>
-            <strong>What you'll get:</strong> a server at <code>{iss.domain}</code> that exposes{' '}
-            <code>/.well-known/agentpki-issuer.json</code> (the directory) and{' '}
-            <code>/mint</code> (issues passports to your agents). Pick your host — same end
-            result, different deploy mechanics:
+          <p className="muted" style={{ marginTop: '2rem', marginBottom: '0.75rem' }}>
+            <strong>Choose your path:</strong>
           </p>
+          <Tabs
+            storageKey="agentpki-pathway-pref"
+            defaultId="a"
+            tabs={[
+              {
+                id: 'a',
+                label: 'Path A — deploy a real issuer (mint + verify)',
+                color: {
+                  text: 'rgb(196, 181, 253)',
+                  bg: 'rgba(167, 139, 250, 0.18)',
+                  border: 'rgba(167, 139, 250, 0.5)',
+                },
+                content: (
+                  <>
+                  <p>
+                    <strong>What you'll get:</strong> a server at <code>{iss.domain}</code> that
+                    exposes <code>/.well-known/agentpki-issuer.json</code> (the directory) and{' '}
+                    <code>/mint</code> (issues passports to your agents). Pick your host — same
+                    end result, different deploy mechanics:
+                  </p>
           <Tabs
             storageKey="agentpki-host-pref"
             defaultId="cf"
@@ -370,6 +373,11 @@ TTL:     Auto`}
               {
                 id: 'cf',
                 label: '☁  Cloudflare Workers  (recommended — 3 min)',
+                color: {
+                  text: 'rgb(254, 215, 170)',
+                  bg: 'rgba(251, 146, 60, 0.18)',
+                  border: 'rgba(251, 146, 60, 0.5)',
+                },
                 content: (
                   <>
                   <p className="muted" style={{ marginTop: 0 }}>
@@ -1046,6 +1054,11 @@ $verify`}
               {
                 id: 'node',
                 label: '🌐  Vercel / Render / Fly / AWS / Other Node.js host',
+                color: {
+                  text: 'rgb(165, 243, 252)',
+                  bg: 'rgba(34, 211, 238, 0.18)',
+                  border: 'rgba(34, 211, 238, 0.5)',
+                },
                 content: (
                   <>
                   <p className="muted" style={{ marginTop: 0 }}>
@@ -1214,20 +1227,19 @@ http.createServer(async (req, res) => {
             ]}
           />
 
-          <h3
-            style={{
-              marginTop: '2rem',
-              fontWeight: 700,
-              color: 'rgb(110, 231, 183)',
-              display: 'inline-block',
-              padding: '0.375rem 0.875rem',
-              background: 'rgba(34, 197, 94, 0.15)',
-              border: '1px solid rgba(34, 197, 94, 0.4)',
-              borderRadius: '0.5rem',
-            }}
-          >
-            Path B — static JSON (verify-only, no minting)
-          </h3>
+                  </>
+                ),
+              },
+              {
+                id: 'b',
+                label: 'Path B — static JSON (verify-only, no minting)',
+                color: {
+                  text: 'rgb(110, 231, 183)',
+                  bg: 'rgba(34, 197, 94, 0.18)',
+                  border: 'rgba(34, 197, 94, 0.5)',
+                },
+                content: (
+                  <>
           <p>
             <strong>What you'll get:</strong> verifiers can validate passports signed by your
             key.{' '}
@@ -1404,6 +1416,11 @@ http.createServer(async (req, res) => {
             </ol>
           </div>
           </details>
+                  </>
+                ),
+              },
+            ]}
+          />
 
           {/* What happens next */}
           <h3 style={{ marginTop: '2rem' }}>What happens after you publish</h3>

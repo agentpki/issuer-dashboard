@@ -5,15 +5,12 @@ import { useState, useEffect, type ReactNode, type CSSProperties } from 'react';
 type OS = 'windows' | 'unix';
 
 /**
- * Reusable OS toggle for code blocks.
+ * Windows / macOS-Linux tab toggle with the same prominent pill styling
+ * as the generic <Tabs> component. Persists pick in localStorage under
+ * `agentpki-os-pref` and auto-detects from userAgent on first mount.
  *
- * Renders a Windows / macOS-Linux tab pair, shows one side at a time.
- * - Auto-detects from navigator.userAgent on first mount
- * - Persists the user's pick in localStorage under `agentpki-os-pref`
- *   so they don't have to re-pick on every page load (or even across
- *   tabs spawned during the same session)
- * - Server-renders both children so the page is correct before
- *   hydration; client takes over after to apply the pick
+ * Windows is the default fallback (matches PowerShell-heavy HN dev mix);
+ * Mac and Linux UAs explicitly switch to unix.
  */
 export function OsTabs({
   windows,
@@ -26,9 +23,6 @@ export function OsTabs({
   unixLabel?: string;
   windowsLabel?: string;
 }) {
-  // Start with both visible until the client has read the pref/UA
-  // (avoids a hydration mismatch + jarring flash for users who would
-  // expect their OS shown but get the other one for a fraction of a sec)
   const [os, setOs] = useState<OS | null>(null);
 
   useEffect(() => {
@@ -37,9 +31,6 @@ export function OsTabs({
       setOs(stored);
       return;
     }
-    // Default to Windows. Mac/Linux users get switched to unix only if
-    // their UA explicitly says so — otherwise stay on Windows (matches
-    // the bigger Windows-share of HN dev visitors who run PowerShell).
     const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
     const isMac = /mac os x|macintosh|darwin/i.test(ua);
     const isLinuxLike = /linux|x11|cros/i.test(ua) && !/android/i.test(ua);
@@ -51,8 +42,19 @@ export function OsTabs({
     try {
       window.localStorage.setItem('agentpki-os-pref', next);
     } catch {
-      // Private-browsing / storage blocked — fine; just don't persist
+      // Storage blocked — fine
     }
+  };
+
+  const WINDOWS_COLOR = {
+    text: 'rgb(147, 197, 253)',
+    bg: 'rgba(96, 165, 250, 0.18)',
+    border: 'rgba(96, 165, 250, 0.5)',
+  };
+  const UNIX_COLOR = {
+    text: 'rgb(252, 211, 77)',
+    bg: 'rgba(251, 191, 36, 0.18)',
+    border: 'rgba(251, 191, 36, 0.5)',
   };
 
   return (
@@ -61,54 +63,53 @@ export function OsTabs({
         role="tablist"
         style={{
           display: 'flex',
-          gap: 0,
-          borderBottom: '1px solid var(--border, rgba(255,255,255,0.1))',
-          marginBottom: '0.5rem',
+          flexWrap: 'wrap',
+          gap: '0.5rem',
+          marginBottom: '1rem',
         }}
       >
-        <TabButton
+        <PillButton
           label={`🪟  ${windowsLabel}`}
           active={os === 'windows'}
+          color={WINDOWS_COLOR}
           onClick={() => select('windows')}
         />
-        <TabButton
+        <PillButton
           label={`🍎  ${unixLabel}`}
           active={os === 'unix'}
+          color={UNIX_COLOR}
           onClick={() => select('unix')}
         />
       </div>
-      {/* During SSR + first paint, Windows renders (the default). The
-          client effect picks Mac/Linux only if UA says so. */}
       <div style={{ display: os === null || os === 'windows' ? 'block' : 'none' }}>
         {windows}
       </div>
-      <div style={{ display: os === 'unix' ? 'block' : 'none' }}>
-        {unix}
-      </div>
+      <div style={{ display: os === 'unix' ? 'block' : 'none' }}>{unix}</div>
     </div>
   );
 }
 
-function TabButton({
+function PillButton({
   label,
   active,
+  color,
   onClick,
 }: {
   label: string;
   active: boolean;
+  color: { text: string; bg: string; border: string };
   onClick: () => void;
 }) {
   const baseStyle: CSSProperties = {
-    background: 'transparent',
-    border: 'none',
     padding: '0.5rem 1rem',
     cursor: 'pointer',
-    fontSize: '0.8125rem',
-    color: active ? 'var(--text)' : 'var(--text-dim, #9c9cab)',
-    fontWeight: active ? 500 : 400,
-    borderBottom: active ? '2px solid var(--accent, #a78bfa)' : '2px solid transparent',
-    marginBottom: '-1px',
-    transition: 'color 0.15s, border-color 0.15s',
+    fontSize: '0.875rem',
+    fontWeight: active ? 600 : 500,
+    borderRadius: '0.5rem',
+    transition: 'background 0.15s, border-color 0.15s, color 0.15s, transform 0.05s',
+    background: active ? color.bg : 'transparent',
+    border: active ? `1.5px solid ${color.border}` : '1.5px solid var(--border, rgba(255,255,255,0.12))',
+    color: active ? color.text : 'var(--text-muted, #b8b8c4)',
   };
   return (
     <button
@@ -117,10 +118,16 @@ function TabButton({
       onClick={onClick}
       style={baseStyle}
       onMouseEnter={(e) => {
-        if (!active) e.currentTarget.style.color = 'var(--text)';
+        if (!active) {
+          e.currentTarget.style.borderColor = color.border;
+          e.currentTarget.style.color = color.text;
+        }
       }}
       onMouseLeave={(e) => {
-        if (!active) e.currentTarget.style.color = 'var(--text-dim, #9c9cab)';
+        if (!active) {
+          e.currentTarget.style.borderColor = 'var(--border, rgba(255,255,255,0.12))';
+          e.currentTarget.style.color = 'var(--text-muted, #b8b8c4)';
+        }
       }}
     >
       {label}

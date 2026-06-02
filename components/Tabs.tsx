@@ -5,18 +5,19 @@ import { useState, useEffect, type ReactNode, type CSSProperties } from 'react';
 type Tab = {
   id: string;
   label: string;
+  /** Color of the active tab pill (text + background tint + border). Optional — defaults to accent purple. */
+  color?: { text: string; bg: string; border: string };
   content: ReactNode;
 };
 
 /**
- * General-purpose tab group. Persists selection in localStorage if a
- * storageKey is given. Server-renders all tabs visible so the page is
- * correct before JS; client takes over to apply the active selection.
+ * General-purpose tab group with prominent pill-style buttons.
  *
- * Different from <OsTabs> in that:
- *  - takes an arbitrary array of tabs (not just unix/windows)
- *  - lets callers pass an explicit default + storage key
- *  - no auto-detection logic
+ *  - Filled background on active tab (so it doesn't look like a quiet underline)
+ *  - Per-tab color so two tabs that represent very different choices can be
+ *    color-coded (e.g. Path A = purple, Path B = green)
+ *  - Persists selection in localStorage if a storageKey is given
+ *  - SSR-renders all panels visible (correct without JS), client picks one
  */
 export function Tabs({
   tabs,
@@ -27,16 +28,13 @@ export function Tabs({
   storageKey?: string;
   defaultId?: string;
 }) {
-  // null initial = "show all on first paint" (SSR + first hydration)
   const [active, setActive] = useState<string | null>(null);
 
   useEffect(() => {
     let next: string | null = null;
     if (storageKey) {
       const stored = window.localStorage.getItem(storageKey);
-      if (stored && tabs.some((t) => t.id === stored)) {
-        next = stored;
-      }
+      if (stored && tabs.some((t) => t.id === stored)) next = stored;
     }
     if (!next) next = defaultId ?? tabs[0]?.id ?? null;
     setActive(next);
@@ -48,9 +46,15 @@ export function Tabs({
       try {
         window.localStorage.setItem(storageKey, id);
       } catch {
-        // Storage blocked — fine, just don't persist
+        // Storage blocked — fine
       }
     }
+  };
+
+  const DEFAULT_COLOR = {
+    text: 'rgb(196, 181, 253)',
+    bg: 'rgba(167, 139, 250, 0.18)',
+    border: 'rgba(167, 139, 250, 0.5)',
   };
 
   return (
@@ -60,9 +64,8 @@ export function Tabs({
         style={{
           display: 'flex',
           flexWrap: 'wrap',
-          gap: 0,
-          borderBottom: '1px solid var(--border, rgba(255,255,255,0.1))',
-          marginBottom: '1rem',
+          gap: '0.5rem',
+          marginBottom: '1.25rem',
         }}
       >
         {tabs.map((t) => (
@@ -70,6 +73,7 @@ export function Tabs({
             key={t.id}
             label={t.label}
             active={active === t.id}
+            color={t.color ?? DEFAULT_COLOR}
             onClick={() => select(t.id)}
           />
         ))}
@@ -90,23 +94,24 @@ export function Tabs({
 function TabButton({
   label,
   active,
+  color,
   onClick,
 }: {
   label: string;
   active: boolean;
+  color: { text: string; bg: string; border: string };
   onClick: () => void;
 }) {
   const baseStyle: CSSProperties = {
-    background: 'transparent',
-    border: 'none',
-    padding: '0.625rem 1rem',
+    padding: '0.625rem 1.125rem',
     cursor: 'pointer',
-    fontSize: '0.875rem',
-    color: active ? 'var(--text)' : 'var(--text-dim, #9c9cab)',
-    fontWeight: active ? 500 : 400,
-    borderBottom: active ? '2px solid var(--accent, #a78bfa)' : '2px solid transparent',
-    marginBottom: '-1px',
-    transition: 'color 0.15s, border-color 0.15s',
+    fontSize: '0.9375rem',
+    fontWeight: active ? 600 : 500,
+    borderRadius: '0.5rem',
+    transition: 'background 0.15s, border-color 0.15s, color 0.15s, transform 0.05s',
+    background: active ? color.bg : 'transparent',
+    border: active ? `1.5px solid ${color.border}` : '1.5px solid var(--border, rgba(255,255,255,0.12))',
+    color: active ? color.text : 'var(--text-muted, #b8b8c4)',
   };
   return (
     <button
@@ -115,10 +120,22 @@ function TabButton({
       onClick={onClick}
       style={baseStyle}
       onMouseEnter={(e) => {
-        if (!active) e.currentTarget.style.color = 'var(--text)';
+        if (!active) {
+          e.currentTarget.style.borderColor = color.border;
+          e.currentTarget.style.color = color.text;
+        }
       }}
       onMouseLeave={(e) => {
-        if (!active) e.currentTarget.style.color = 'var(--text-dim, #9c9cab)';
+        if (!active) {
+          e.currentTarget.style.borderColor = 'var(--border, rgba(255,255,255,0.12))';
+          e.currentTarget.style.color = 'var(--text-muted, #b8b8c4)';
+        }
+      }}
+      onMouseDown={(e) => {
+        e.currentTarget.style.transform = 'translateY(1px)';
+      }}
+      onMouseUp={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
       }}
     >
       {label}
