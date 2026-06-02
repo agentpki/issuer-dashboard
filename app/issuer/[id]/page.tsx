@@ -345,9 +345,167 @@ TTL:     Auto`}
             <code>/abuse</code> (abuse-report intake). Full spec §3-§7 compliant.
           </p>
           <p className="muted">
-            <strong>Time:</strong> about 10 minutes if you have <code>git</code>, Node, and a
-            Cloudflare account ready.
+            <strong>Time:</strong> about 5 minutes with the one-paste bootstrap below.
           </p>
+
+          {/* ─── ONE-PASTE BOOTSTRAP — preferred for tomorrow's HN visitors ─── */}
+          <div
+            className="card"
+            style={{
+              background: 'rgba(34, 197, 94, 0.06)',
+              border: '1px solid rgba(34, 197, 94, 0.3)',
+              marginTop: '1rem',
+              marginBottom: '1.5rem',
+            }}
+          >
+            <h3 style={{ marginTop: 0, fontSize: '1rem', color: 'var(--success)' }}>
+              ⚡ Fastest path — paste 2 commands, that's it
+            </h3>
+            <p className="muted" style={{ marginTop: '0.5rem', marginBottom: '0.75rem' }}>
+              The script below replaces steps 2 through 7 of the numbered walkthrough. It edits{' '}
+              <code>wrangler.toml</code>, creates the KV namespace, generates the{' '}
+              <code>INTERNAL_MINT_SECRET</code> for you, prompts once for your private key, and
+              deploys. Total time: about 3 minutes.
+            </p>
+            <p className="dim small" style={{ marginTop: 0, marginBottom: '0.75rem' }}>
+              <strong>Before pasting:</strong> have the <strong>Reveal private key</strong> page
+              open in another tab — you'll need to paste the 64-char hex when prompted.
+            </p>
+
+            <p className="muted" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
+              <strong>Step 1 — clone + enter the repo:</strong>
+            </p>
+            <pre style={{ marginTop: 0, marginBottom: '0.75rem' }}>
+{`git clone https://github.com/agentpki/real-issuer.git
+cd real-issuer
+npm install`}
+            </pre>
+            <p className="dim small" style={{ marginTop: 0, marginBottom: '0.75rem' }}>
+              (Use <code>npm install</code> — works on every machine. If you have{' '}
+              <code>pnpm</code> installed, <code>pnpm install</code> works too.)
+            </p>
+
+            <p className="muted" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
+              <strong>Step 2 — paste this whole block. Windows PowerShell:</strong>
+            </p>
+            <pre style={{ marginTop: 0, marginBottom: '0.5rem', fontSize: '0.75rem' }}>
+{`# Auto-bootstrap for issuer ${iss.domain}
+$ErrorActionPreference = 'Stop'
+
+# 1) Edit wrangler.toml — replace placeholder vars with your issuer's
+$toml = Get-Content wrangler.toml -Raw
+$toml = $toml -replace 'name = "agentpki-issuer"', 'name = "agentpki-issuer-${iss.domain.replace(/\./g, '-')}"'
+$toml = $toml -replace 'ISSUER_DOMAIN = "your-issuer-domain.com"', 'ISSUER_DOMAIN = "${iss.domain}"'
+$toml = $toml -replace 'ISSUER_NAME = "Your Company, Inc."', 'ISSUER_NAME = "${iss.name.replace(/"/g, '\\"')}"'
+$toml = $toml -replace 'ISSUER_TIER = "1"', 'ISSUER_TIER = "${iss.tier}"'
+$toml = $toml -replace 'KID = "your-issuer-2026-q2"', 'KID = "${activeKey.kid}"'
+$toml = $toml -replace 'KEY_VALID_FROM = "1714521600"', 'KEY_VALID_FROM = "${Math.floor(activeKey.validFrom.getTime() / 1000)}"'
+$toml = $toml -replace 'KEY_VALID_TO   = "1893456000"', 'KEY_VALID_TO   = "${Math.floor(activeKey.validTo.getTime() / 1000)}"'
+$toml = $toml -replace 'ABUSE_CONTACT_EMAIL    = "abuse@your-issuer-domain.com"', 'ABUSE_CONTACT_EMAIL    = "abuse@${iss.domain}"'
+$toml = $toml -replace 'SECURITY_CONTACT_EMAIL = "security@your-issuer-domain.com"', 'SECURITY_CONTACT_EMAIL = "security@${iss.domain}"'
+Set-Content wrangler.toml -Value $toml -NoNewline
+
+# 2) Create KV namespace and inject the id
+$kvOutput = npx wrangler kv namespace create ISSUER_STATE 2>&1 | Out-String
+$kvId = ([regex]'id = "([a-f0-9]+)"').Match($kvOutput).Groups[1].Value
+if (-not $kvId) { throw "Could not parse KV namespace id from output: $kvOutput" }
+$toml = (Get-Content wrangler.toml -Raw) -replace 'PASTE-KV-NAMESPACE-ID-HERE', $kvId
+Set-Content wrangler.toml -Value $toml -NoNewline
+Write-Host "✅ KV namespace created: $kvId"
+
+# 3) Generate INTERNAL_MINT_SECRET — auto-random, save the output
+$bytes = New-Object byte[] 48
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+$mintSecret = [Convert]::ToBase64String($bytes)
+Write-Host ""
+Write-Host "🔑 SAVE THIS — your agents will need it to call /mint:" -ForegroundColor Yellow
+Write-Host "   $mintSecret" -ForegroundColor Yellow
+Write-Host ""
+$mintSecret | npx wrangler secret put INTERNAL_MINT_SECRET
+
+# 4) Prompt for ISSUER_PRIVATE_KEY_HEX (paste it from the reveal page)
+$privateKey = Read-Host "Paste your 64-char hex private key from the Reveal page"
+$privateKey.Trim() | npx wrangler secret put ISSUER_PRIVATE_KEY_HEX
+
+# 5) Deploy
+npx wrangler deploy
+
+Write-Host ""
+Write-Host "✅ DEPLOYED. Next step: attach ${iss.domain} as a Custom Domain in CF Workers." -ForegroundColor Green
+Write-Host "   Workers & Pages → agentpki-issuer-${iss.domain.replace(/\./g, '-')} → Domains tab → + Add" -ForegroundColor Green`}
+            </pre>
+
+            <p className="muted" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
+              <strong>Or — macOS / Linux / WSL / Git Bash:</strong>
+            </p>
+            <pre style={{ marginTop: 0, marginBottom: '0.5rem', fontSize: '0.75rem' }}>
+{`# Auto-bootstrap for issuer ${iss.domain}
+set -e
+
+# 1) Edit wrangler.toml
+sed -i.bak \\
+  -e 's|name = "agentpki-issuer"|name = "agentpki-issuer-${iss.domain.replace(/\./g, '-')}"|' \\
+  -e 's|ISSUER_DOMAIN = "your-issuer-domain.com"|ISSUER_DOMAIN = "${iss.domain}"|' \\
+  -e 's|ISSUER_NAME = "Your Company, Inc."|ISSUER_NAME = "${iss.name.replace(/"/g, '\\"')}"|' \\
+  -e 's|KID = "your-issuer-2026-q2"|KID = "${activeKey.kid}"|' \\
+  -e 's|KEY_VALID_FROM = "1714521600"|KEY_VALID_FROM = "${Math.floor(activeKey.validFrom.getTime() / 1000)}"|' \\
+  -e 's|KEY_VALID_TO   = "1893456000"|KEY_VALID_TO   = "${Math.floor(activeKey.validTo.getTime() / 1000)}"|' \\
+  -e 's|ABUSE_CONTACT_EMAIL    = "abuse@your-issuer-domain.com"|ABUSE_CONTACT_EMAIL    = "abuse@${iss.domain}"|' \\
+  -e 's|SECURITY_CONTACT_EMAIL = "security@your-issuer-domain.com"|SECURITY_CONTACT_EMAIL = "security@${iss.domain}"|' \\
+  wrangler.toml
+rm wrangler.toml.bak
+
+# 2) Create KV namespace and inject the id
+KV_ID=$(npx wrangler kv namespace create ISSUER_STATE 2>&1 | grep -oE 'id = "[a-f0-9]+"' | grep -oE '[a-f0-9]+')
+[ -z "$KV_ID" ] && { echo "Could not parse KV id"; exit 1; }
+sed -i.bak "s|PASTE-KV-NAMESPACE-ID-HERE|$KV_ID|" wrangler.toml
+rm wrangler.toml.bak
+echo "✅ KV namespace created: $KV_ID"
+
+# 3) Generate INTERNAL_MINT_SECRET
+MINT_SECRET=$(openssl rand -base64 48 | tr -d '\\n')
+echo ""
+echo "🔑 SAVE THIS — your agents will need it to call /mint:"
+echo "   $MINT_SECRET"
+echo ""
+echo "$MINT_SECRET" | npx wrangler secret put INTERNAL_MINT_SECRET
+
+# 4) Prompt for ISSUER_PRIVATE_KEY_HEX
+read -p "Paste your 64-char hex private key from the Reveal page: " PRIVATE_KEY
+echo "$PRIVATE_KEY" | tr -d '\\n' | npx wrangler secret put ISSUER_PRIVATE_KEY_HEX
+
+# 5) Deploy
+npx wrangler deploy
+
+echo ""
+echo "✅ DEPLOYED. Next: attach ${iss.domain} as a Custom Domain in CF Workers."
+echo "   Workers & Pages → agentpki-issuer-${iss.domain.replace(/\./g, '-')} → Domains tab → + Add"`}
+            </pre>
+
+            <p className="dim small" style={{ marginTop: '1rem', marginBottom: 0 }}>
+              <strong>What the script does, in order:</strong> patches{' '}
+              <code>wrangler.toml</code> with your issuer's values → creates the KV namespace
+              and injects its id → generates an <code>INTERNAL_MINT_SECRET</code> and prints it
+              (save it!) → prompts you for the private key → runs{' '}
+              <code>npx wrangler deploy</code>.{' '}
+              <strong>After this finishes, only step 8 (attach custom domain) is left.</strong>{' '}
+              You're 3 minutes from a live issuer.
+            </p>
+            <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+              <strong>First run will prompt for Cloudflare login</strong> — wrangler opens a
+              browser window to auth. Click Allow. Then the script continues.
+            </p>
+          </div>
+
+          <details style={{ marginBottom: '1.5rem' }}>
+            <summary className="muted" style={{ cursor: 'pointer', padding: '0.5rem 0' }}>
+              Prefer to do it manually? Expand for the 11 individual numbered steps →
+            </summary>
+            <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+              The detailed walkthrough below covers the same operations the bootstrap script
+              does, but with each step broken out so you can understand or customize. If the
+              bootstrap script worked for you, skip directly to step 8 (attach custom domain).
+            </p>
 
           <div className="card" style={{ marginTop: '1rem', marginBottom: '1rem' }}>
             <ol style={{ margin: 0, paddingLeft: '1.25rem' }}>
@@ -754,6 +912,7 @@ $verify`}
               </li>
             </ol>
           </div>
+          </details>
 
           {/* Universal debug help — applies to any wall hit during Path A */}
           <div
@@ -824,6 +983,96 @@ $verify`}
             <strong>Time:</strong> about 2 minutes if you already have a static host (Vercel,
             Netlify, S3, GitHub Pages, etc.).
           </p>
+
+          {/* One-click download for Path B — no copy/paste required */}
+          <div
+            className="card"
+            style={{
+              background: 'rgba(34, 197, 94, 0.06)',
+              border: '1px solid rgba(34, 197, 94, 0.3)',
+              marginTop: '1rem',
+              marginBottom: '1rem',
+            }}
+          >
+            <h3 style={{ marginTop: 0, fontSize: '1rem', color: 'var(--success)' }}>
+              ⚡ Fastest path — click to download, then upload
+            </h3>
+            <p className="muted" style={{ marginTop: '0.5rem', marginBottom: '0.75rem' }}>
+              Your <code>agentpki-issuer.json</code> is auto-generated below. Download it,
+              upload it to your static host at the path{' '}
+              <code>/.well-known/agentpki-issuer.json</code>, done.
+            </p>
+            <a
+              href={`data:application/json;charset=utf-8,${encodeURIComponent(
+                JSON.stringify(
+                  {
+                    v: 1,
+                    issuer: iss.domain,
+                    name: iss.name,
+                    tier: iss.tier,
+                    current_keys: [
+                      {
+                        kid: activeKey.kid,
+                        alg: 'Ed25519',
+                        pubkey: activeKey.publicKeySpkiB64,
+                        valid_from: Math.floor(activeKey.validFrom.getTime() / 1000),
+                        valid_to: Math.floor(activeKey.validTo.getTime() / 1000),
+                      },
+                    ],
+                    crl_url: `${fqdn}/.well-known/agentpki-crl.json`,
+                    abuse_report_url: `${fqdn}/abuse`,
+                    contact: {
+                      abuse: `mailto:abuse@${iss.domain}`,
+                      security: `mailto:security@${iss.domain}`,
+                    },
+                  },
+                  null,
+                  2,
+                ),
+              )}`}
+              download="agentpki-issuer.json"
+              style={{
+                display: 'inline-block',
+                padding: '0.625rem 1.25rem',
+                background: 'var(--success)',
+                color: '#08080b',
+                borderRadius: '0.5rem',
+                textDecoration: 'none',
+                fontWeight: 500,
+                fontSize: '0.9375rem',
+              }}
+            >
+              ⬇ Download agentpki-issuer.json
+            </a>
+            <p className="dim small" style={{ marginTop: '0.75rem', marginBottom: 0 }}>
+              <strong>Per-host upload paths:</strong>
+            </p>
+            <ul className="dim small" style={{ marginTop: '0.25rem', marginBottom: 0, paddingLeft: '1.25rem' }}>
+              <li>
+                <strong>Vercel / Netlify / Next.js / Astro:</strong> drop the file at{' '}
+                <code>public/.well-known/agentpki-issuer.json</code> in your repo, commit, push.
+                Auto-deploys at <code>https://{iss.domain}/.well-known/agentpki-issuer.json</code>.
+              </li>
+              <li>
+                <strong>S3:</strong> upload with object key{' '}
+                <code>.well-known/agentpki-issuer.json</code>, public-read ACL, set{' '}
+                <code>Content-Type: application/json</code>.
+              </li>
+              <li>
+                <strong>GitHub Pages:</strong> place at{' '}
+                <code>.well-known/agentpki-issuer.json</code> in your published branch.
+              </li>
+              <li>
+                <strong>Cloudflare Pages:</strong> drop into <code>public/.well-known/</code> in
+                your repo. Auto-served on next deploy.
+              </li>
+            </ul>
+          </div>
+
+          <details style={{ marginBottom: '1rem' }}>
+            <summary className="muted" style={{ cursor: 'pointer' }}>
+              Prefer to copy/paste the JSON manually? Expand for the original walkthrough.
+            </summary>
 
           <div className="card" style={{ marginTop: '1rem', marginBottom: '1rem' }}>
             <ol style={{ margin: 0, paddingLeft: '1.25rem' }}>
@@ -896,6 +1145,7 @@ $verify`}
               </li>
             </ol>
           </div>
+          </details>
 
           {/* What happens next */}
           <h3 style={{ marginTop: '2rem' }}>What happens after you publish</h3>
