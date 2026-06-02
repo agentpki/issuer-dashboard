@@ -98,10 +98,22 @@ export default async function RevealPrivateKey({
 
           <h2>Wrangler one-liner</h2>
           <p className="muted small">
-            From your forked <code>real-issuer</code> Worker directory, with{' '}
-            <code>wrangler</code> authenticated:
+            From your forked <code>real-issuer</code> Worker directory, after at least one
+            successful <code>npx wrangler deploy</code> (so the Worker exists for the secret to
+            attach to):
           </p>
-          <pre>{`echo "${hex}" | wrangler secret put ISSUER_PRIVATE_KEY_HEX`}</pre>
+          <pre>{`"${hex}" | npx wrangler secret put ISSUER_PRIVATE_KEY_HEX`}</pre>
+          <p className="dim small">
+            <strong>Important:</strong> uses <code>npx wrangler</code> (not bare{' '}
+            <code>wrangler</code>) so it works without a globally-installed wrangler.{' '}
+            <strong>On Windows PowerShell, this exact form works as written</strong> — the
+            quoted string pipes straight into wrangler's stdin. The earlier{' '}
+            <code>echo "..." | wrangler …</code> form had two failure modes (bare{' '}
+            <code>wrangler</code> missing from PATH; PowerShell's <code>echo</code> adding a
+            trailing newline to the secret value) so we changed it. Verify with{' '}
+            <code>npx wrangler secret list</code> after — you should see{' '}
+            <code>ISSUER_PRIVATE_KEY_HEX</code> in the output.
+          </p>
 
           <h2>Plain (non-secret) env vars</h2>
           <p className="muted small">
