@@ -292,12 +292,20 @@ TTL:     Auto`}
           <div className="card" style={{ marginTop: '1rem', marginBottom: '1rem' }}>
             <ol style={{ margin: 0, paddingLeft: '1.25rem' }}>
               <li style={{ marginBottom: '0.75rem' }}>
-                <strong>Clone the template repo</strong> and enter it:
+                <strong>Clone the template repo</strong> and install dependencies:
                 <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
 {`git clone https://github.com/agentpki/real-issuer.git
 cd real-issuer
 pnpm install`}
                 </pre>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                  Don't have <code>pnpm</code>? Three options:{' '}
+                  <strong>(a)</strong> run <code>corepack enable &amp;&amp; corepack prepare pnpm@latest --activate</code>{' '}
+                  (zero install, requires Node 16.13+),{' '}
+                  <strong>(b)</strong> <code>npm install -g pnpm</code> (standard global install), or{' '}
+                  <strong>(c)</strong> just use <code>npm install</code> instead — works fine, ignores
+                  the pnpm-lock.yaml and generates its own package-lock.json.
+                </p>
               </li>
               <li style={{ marginBottom: '0.75rem' }}>
                 <strong>Edit <code>wrangler.toml</code></strong> and replace the placeholder
