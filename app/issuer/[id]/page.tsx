@@ -512,8 +512,12 @@ id = "abc123def456789..."   ← copy this id`}
 {`# macOS / Linux / WSL / Git Bash:
 openssl rand -base64 48 | npx wrangler secret put INTERNAL_MINT_SECRET
 
-# Windows PowerShell:
-$s = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48)); echo $s | npx wrangler secret put INTERNAL_MINT_SECRET; Write-Host "Save this for your agents: $s"`}
+# Windows PowerShell (works on both PS 5.1 / PS 7+):
+$bytes = New-Object byte[] 48
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+$s = [Convert]::ToBase64String($bytes)
+Write-Host "SAVE THIS for your agents: $s"
+$s | npx wrangler secret put INTERNAL_MINT_SECRET`}
                 </pre>
                 <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
                   Generates a 64-character base64 string, pipes it into Cloudflare as a secret,
