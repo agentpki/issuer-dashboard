@@ -6,6 +6,7 @@ import { notFound, redirect } from 'next/navigation';
 import { generateKey, verifyDomain, deleteIssuer } from './actions';
 import { SubmitButton } from '@/components/SubmitButton';
 import { OsTabs } from '@/components/OsTabs';
+import { CopyBlock } from '@/components/CopyBlock';
 
 export const dynamic = 'force-dynamic';
 
@@ -388,11 +389,13 @@ TTL:     Auto`}
             <p className="muted" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
               <strong>Step 1 — clone + enter the repo:</strong>
             </p>
-            <pre style={{ marginTop: 0, marginBottom: '0.75rem' }}>
+            <CopyBlock>
+              <pre style={{ marginTop: 0, marginBottom: '0.75rem' }}>
 {`git clone https://github.com/agentpki/real-issuer.git
 cd real-issuer
 npm install`}
-            </pre>
+              </pre>
+            </CopyBlock>
             <p
               style={{
                 marginTop: 0,
@@ -415,6 +418,7 @@ npm install`}
             </p>
             <OsTabs
               unix={
+                <CopyBlock>
                 <pre style={{ marginTop: 0, marginBottom: '0.5rem', fontSize: '0.75rem' }}>
 {`# Auto-bootstrap for issuer ${iss.domain}
 set -e
@@ -458,8 +462,10 @@ echo ""
 echo "✅ DEPLOYED. Next: attach ${iss.domain} as a Custom Domain in CF Workers."
 echo "   Workers & Pages → agentpki-issuer-${iss.domain.replace(/\./g, '-')} → Domains tab → + Add"`}
                 </pre>
+                </CopyBlock>
               }
               windows={
+                <CopyBlock>
                 <pre style={{ marginTop: 0, marginBottom: '0.5rem', fontSize: '0.75rem' }}>
 {`# Auto-bootstrap for issuer ${iss.domain}
 $ErrorActionPreference = 'Stop'
@@ -506,6 +512,7 @@ Write-Host ""
 Write-Host "✅ DEPLOYED. Next step: attach ${iss.domain} as a Custom Domain in CF Workers." -ForegroundColor Green
 Write-Host "   Workers & Pages → agentpki-issuer-${iss.domain.replace(/\./g, '-')} → Domains tab → + Add" -ForegroundColor Green`}
                 </pre>
+                </CopyBlock>
               }
             />
 
@@ -1004,6 +1011,185 @@ $verify`}
               <code>wrangler tail</code> output and we'll unblock you.
             </p>
           </div>
+
+          {/* ─── Path A* — non-Cloudflare alternatives ─── */}
+          <h3 style={{ marginTop: '2rem' }}>Not on Cloudflare? Here's how to mint anywhere</h3>
+          <p className="muted">
+            Path A above is opinionated on Cloudflare Workers because it ships a complete
+            production stack out of the box — Worker, KV namespace, custom domain, edge TLS.
+            If you're on AWS / GCP / Vercel / Fly / Render / Railway / your own VPS, you can
+            still mint AgentPKI passports — you just write a tiny server using the SDK directly
+            and deploy it wherever you already deploy code. Total LOC: ~30.
+          </p>
+          <p className="dim small">
+            <strong>The protocol is host-agnostic.</strong> The only thing the Worker does is
+            (a) load the signing key, (b) accept HTTP requests, (c) call{' '}
+            <code>signPassport</code> from <code>@agentpki/sdk</code>. Any HTTP server in any
+            language with Ed25519 support can do the same.
+          </p>
+
+          <div
+            className="card"
+            style={{
+              background: 'rgba(96, 165, 250, 0.04)',
+              border: '1px solid rgba(96, 165, 250, 0.25)',
+              marginTop: '1rem',
+              marginBottom: '1rem',
+            }}
+          >
+            <h4 style={{ marginTop: 0, fontSize: '0.9375rem' }}>
+              Minimal Node.js mint server (deploys on anything that runs Node)
+            </h4>
+            <p className="dim small" style={{ marginTop: '0.25rem', marginBottom: '0.5rem' }}>
+              Save as <code>server.js</code>, set the env vars, run{' '}
+              <code>node server.js</code>. Deploy to{' '}
+              <strong>Vercel</strong>, <strong>Render</strong>, <strong>Fly.io</strong>,{' '}
+              <strong>Railway</strong>, <strong>AWS Lambda + API Gateway</strong>,{' '}
+              <strong>GCP Cloud Run</strong>, <strong>Azure Container Apps</strong>, or any
+              VPS. The code is identical:
+            </p>
+            <CopyBlock>
+              <pre style={{ marginTop: 0, marginBottom: 0, fontSize: '0.75rem' }}>
+{`// server.js — minimal AgentPKI mint server (Node 18+)
+// Deploys identically to Vercel, Render, Fly, Railway, AWS Lambda, GCP Run, Azure, etc.
+//
+// Env vars to set on your host:
+//   ISSUER_PRIVATE_KEY_HEX   = "<64-char hex from Reveal page>"
+//   INTERNAL_MINT_SECRET     = "<random 32+ char string>"
+//
+// Public env vars (also set on your host, or hardcode):
+//   ISSUER_DOMAIN  = "${iss.domain}"
+//   ISSUER_NAME    = "${iss.name}"
+//   ISSUER_TIER    = "${iss.tier}"
+//   KID            = "${activeKey.kid}"
+
+import http from 'node:http';
+import { signPassport } from '@agentpki/sdk';
+
+const PORT = process.env.PORT || 8080;
+const SECRET = process.env.INTERNAL_MINT_SECRET;
+const KEY_HEX = process.env.ISSUER_PRIVATE_KEY_HEX;
+const privateKey = Uint8Array.from(Buffer.from(KEY_HEX, 'hex'));
+
+http.createServer(async (req, res) => {
+  try {
+    const url = new URL(req.url, 'http://x');
+    res.setHeader('Content-Type', 'application/json');
+
+    // /.well-known/agentpki-issuer.json — public directory
+    if (req.method === 'GET' && url.pathname === '/.well-known/agentpki-issuer.json') {
+      return res.end(JSON.stringify(${JSON.stringify(
+        {
+          v: 1,
+          issuer: iss.domain,
+          name: iss.name,
+          tier: iss.tier,
+          current_keys: [
+            {
+              kid: activeKey.kid,
+              alg: 'Ed25519',
+              pubkey: activeKey.publicKeySpkiB64,
+              valid_from: Math.floor(activeKey.validFrom.getTime() / 1000),
+              valid_to: Math.floor(activeKey.validTo.getTime() / 1000),
+            },
+          ],
+          crl_url: \`\${fqdn}/.well-known/agentpki-crl.json\`,
+          abuse_report_url: \`\${fqdn}/abuse\`,
+          contact: {
+            abuse: \`mailto:abuse@\${iss.domain}\`,
+            security: \`mailto:security@\${iss.domain}\`,
+          },
+        },
+        null,
+        0,
+      )}));
+    }
+
+    // POST /mint — Bearer-auth, returns a signed passport
+    if (req.method === 'POST' && url.pathname === '/mint') {
+      const auth = req.headers.authorization || '';
+      if (auth !== \`Bearer \${SECRET}\`) {
+        res.statusCode = 401;
+        return res.end(JSON.stringify({ error: 'unauthorized' }));
+      }
+      let body = '';
+      for await (const chunk of req) body += chunk;
+      const { sub, scope = ['read'], lifetime = 300 } = JSON.parse(body || '{}');
+      const token = await signPassport({
+        iss: '${iss.domain}',
+        sub,
+        scope,
+        kid: '${activeKey.kid}',
+        privateKey,
+        lifetime,
+      });
+      return res.end(JSON.stringify({ token, expires_in: lifetime }));
+    }
+
+    res.statusCode = 404;
+    res.end(JSON.stringify({ error: 'not_found' }));
+  } catch (e) {
+    res.statusCode = 500;
+    res.end(JSON.stringify({ error: 'internal', detail: String(e) }));
+  }
+}).listen(PORT, () => console.log(\`AgentPKI issuer listening on :\${PORT}\`));`}
+              </pre>
+            </CopyBlock>
+            <p className="dim small" style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>
+              <strong>Per-host deploy notes:</strong>
+            </p>
+            <ul className="dim small" style={{ marginTop: 0, marginBottom: 0, paddingLeft: '1.25rem' }}>
+              <li style={{ marginBottom: '0.25rem' }}>
+                <strong>Vercel:</strong> save as <code>api/issuer/[...slug].js</code> in a
+                Next.js project (rewrite the http server to a Next API route). Or use a Vercel
+                Function. <code>vercel deploy</code>. Add custom domain in Vercel dashboard.
+              </li>
+              <li style={{ marginBottom: '0.25rem' }}>
+                <strong>Fly.io:</strong>{' '}
+                <code>fly launch</code> in the folder → it generates a Dockerfile for Node →{' '}
+                <code>fly secrets set ISSUER_PRIVATE_KEY_HEX=… INTERNAL_MINT_SECRET=…</code> →{' '}
+                <code>fly deploy</code>.
+              </li>
+              <li style={{ marginBottom: '0.25rem' }}>
+                <strong>Render / Railway:</strong> push to a GitHub repo, connect to Render or
+                Railway, add the env vars in their dashboard, deploy auto-runs on push.
+              </li>
+              <li style={{ marginBottom: '0.25rem' }}>
+                <strong>AWS Lambda + API Gateway:</strong> wrap the handler logic in a
+                Lambda-compatible handler (or use{' '}
+                <a href="https://github.com/awslabs/aws-lambda-web-adapter">aws-lambda-web-adapter</a>{' '}
+                to run the http server as-is). Set env vars in Lambda config. Add custom domain
+                via API Gateway → ACM.
+              </li>
+              <li style={{ marginBottom: '0.25rem' }}>
+                <strong>GCP Cloud Run:</strong>{' '}
+                <code>gcloud run deploy --source .</code>. Cloud Run reads PORT from env. Add
+                env vars via{' '}
+                <code>--set-env-vars</code> or in the console.
+              </li>
+              <li style={{ marginBottom: '0.25rem' }}>
+                <strong>Self-hosted VPS / Docker:</strong> just{' '}
+                <code>node server.js</code> behind nginx with Let's Encrypt. Point your domain
+                at the VPS, you're done.
+              </li>
+            </ul>
+            <p className="dim small" style={{ marginTop: '0.75rem', marginBottom: 0 }}>
+              <strong>What about the CRL, abuse reports, replay cache?</strong> The Worker
+              template includes those. The minimal Node.js example above doesn't — those are
+              v0.2 extensions. For v0.1 conformance (which is what verifiers check today),
+              the directory + mint are sufficient. Add CRL + abuse handlers as you need them
+              — see <a href="https://github.com/agentpki/real-issuer/tree/main/src">
+                real-issuer/src
+              </a> for reference implementations of each route in &lt;50 lines each.
+            </p>
+          </div>
+
+          <p className="muted" style={{ marginTop: '1rem' }}>
+            <strong>The TL;DR:</strong> Cloudflare is the path of least resistance because the
+            template handles every detail. But there's nothing Cloudflare-specific about{' '}
+            <strong>AgentPKI itself</strong> — every verifier on the web will validate a
+            passport signed correctly, regardless of where the issuer is hosted.
+          </p>
 
           <h3 style={{ marginTop: '2rem' }}>Path B — static JSON (verify-only, no minting)</h3>
           <p>
