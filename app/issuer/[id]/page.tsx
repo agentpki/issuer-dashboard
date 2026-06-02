@@ -352,10 +352,57 @@ ISSUER_NAME    = "${iss.name}"
 ISSUER_TIER    = "${iss.tier}"
 KID            = "${activeKey.kid}"
 KEY_VALID_FROM = "${Math.floor(activeKey.validFrom.getTime() / 1000)}"
-KEY_VALID_TO   = "${Math.floor(activeKey.validTo.getTime() / 1000)}"`}
+KEY_VALID_TO   = "${Math.floor(activeKey.validTo.getTime() / 1000)}"
+ABUSE_CONTACT_EMAIL    = "abuse@${iss.domain}"
+SECURITY_CONTACT_EMAIL = "security@${iss.domain}"`}
+                </pre>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                  <strong>About the contact emails:</strong> these end up in your published
+                  <code>/.well-known/agentpki-issuer.json</code> directory as the abuse-report and
+                  security-disclosure inboxes. <code>abuse@{iss.domain}</code> and{' '}
+                  <code>security@{iss.domain}</code> are conventions but anything you actually
+                  monitor works (e.g. <code>hello@{iss.domain}</code>). If those mailboxes don't
+                  exist yet, set up Cloudflare Email Routing (free) to forward them to a real
+                  inbox — verifiers and security researchers will look at these.
+                </p>
+                <p className="dim small" style={{ marginTop: 0, marginBottom: '0.5rem' }}>
+                  <strong>One more change in this file:</strong> at the very top, find the line{' '}
+                  <code>name = "agentpki-issuer"</code> (or with{' '}
+                  <code>-edit-me</code> suffix in older versions). This is your Cloudflare
+                  Worker's name — must be unique within your Cloudflare account. Suggest:
+                </p>
+                <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+{`name = "agentpki-issuer-${iss.domain.replace(/\./g, '-')}"`}
                 </pre>
                 <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
                   Save the file (<code>Ctrl+S</code> / <code>Cmd+S</code>) and close the editor.
+                </p>
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Create the issuer-state KV namespace.</strong> Your Worker needs a
+                Cloudflare KV namespace to store revoked-passport IDs, key rotation history,
+                and the mint audit log. One command creates it:
+                <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+{`npx wrangler kv namespace create ISSUER_STATE`}
+                </pre>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                  Wrangler prints something like:
+                </p>
+                <pre style={{ marginTop: 0, marginBottom: '0.5rem', fontSize: '0.75rem' }}>
+{`🌀 Creating namespace with title "ISSUER_STATE"
+✨ Success!
+Add the following to your configuration file:
+[[kv_namespaces]]
+binding = "ISSUER_STATE"
+id = "abc123def456789..."   ← copy this id`}
+                </pre>
+                <p className="dim small" style={{ marginTop: 0, marginBottom: 0 }}>
+                  <strong>Copy the <code>id</code> value</strong> and open{' '}
+                  <code>wrangler.toml</code> again. Find the existing{' '}
+                  <code>[[kv_namespaces]]</code> block (it has a placeholder id like{' '}
+                  <code>PASTE-KV-NAMESPACE-ID-HERE</code> or{' '}
+                  <code>EDIT-ME-...</code>) and replace just the <code>id</code> value with
+                  what wrangler printed. Save the file.
                 </p>
               </li>
               <li style={{ marginBottom: '0.75rem' }}>
@@ -453,6 +500,31 @@ KEY_VALID_TO   = "${Math.floor(activeKey.validTo.getTime() / 1000)}"`}
                   <strong>Windows PowerShell note:</strong> the <code>echo "…" | …</code> form
                   works in PowerShell too — <code>echo</code> is an alias for{' '}
                   <code>Write-Output</code> and the pipe is native PS syntax. No change needed.
+                </p>
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Set the second secret — <code>INTERNAL_MINT_SECRET</code>.</strong> This
+                is a random bearer token your <em>own</em> agents will use to authenticate to
+                your Worker's <code>/mint</code> endpoint (the public verifier endpoint is
+                wide-open; <code>/mint</code> is the private one). Generate and set it in one
+                line:
+                <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+{`# macOS / Linux / WSL / Git Bash:
+openssl rand -base64 48 | npx wrangler secret put INTERNAL_MINT_SECRET
+
+# Windows PowerShell:
+$s = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48)); echo $s | npx wrangler secret put INTERNAL_MINT_SECRET; Write-Host "Save this for your agents: $s"`}
+                </pre>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                  Generates a 64-character base64 string, pipes it into Cloudflare as a secret,
+                  and (on PowerShell) echoes it back once so you can save it to a password
+                  manager. Your agents will need this value to call <code>/mint</code>. The
+                  Worker will reject any <code>/mint</code> request without an{' '}
+                  <code>Authorization: Bearer &lt;this-value&gt;</code> header.
+                </p>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                  If you lose the value, just re-run the command — wrangler will overwrite the
+                  secret with a new one and your agents will need to be updated.
                 </p>
               </li>
               <li style={{ marginBottom: '0.75rem' }}>
