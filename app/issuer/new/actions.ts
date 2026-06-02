@@ -10,12 +10,15 @@ export async function createIssuer(formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) throw new Error('unauthorized');
 
-  const domain = String(formData.get('domain') ?? '').trim().toLowerCase();
+  const rawDomain = String(formData.get('domain') ?? '');
+  const domain = normalizeDomain(rawDomain);
   const name = String(formData.get('name') ?? '').trim();
   const tier = parseInt(String(formData.get('tier') ?? '1'), 10);
 
   if (!/^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}$/.test(domain)) {
-    throw new Error('Invalid domain shape.');
+    throw new Error(
+      `"${rawDomain}" doesn't look like a valid domain. Use just the root, e.g. "acme.com" — no protocol, no www, no path.`,
+    );
   }
   if (!name || name.length < 2) throw new Error('Name required.');
   if (![1, 2, 3].includes(tier)) throw new Error('Invalid tier.');
@@ -49,4 +52,34 @@ export async function createIssuer(formData: FormData) {
   });
 
   redirect(`/issuer/${inserted.id}`);
+}
+
+/**
+ * Normalize a user-supplied domain string into the canonical root domain.
+ * Silently strips:
+ *   - leading/trailing whitespace
+ *   - mixed-case
+ *   - `https://` / `http://` prefixes
+ *   - leading `www.`
+ *   - trailing dots (FQDN form)
+ *   - trailing port numbers
+ *   - any path/query/fragment suffix
+ *
+ * Examples:
+ *   "  https://WWW.Acme.com/  "  →  "acme.com"
+ *   "www.acme.com"               →  "acme.com"
+ *   "acme.com:8080/foo?q=1"      →  "acme.com"
+ *   "acme.com."                  →  "acme.com"
+ */
+function normalizeDomain(input: string): string {
+  let s = input.trim().toLowerCase();
+  s = s.replace(/^https?:\/\//, '');
+  s = s.replace(/^www\./, '');
+  // Cut at first /, ?, or # — strips path / query / fragment in one pass.
+  s = s.split(/[/?#]/)[0] ?? '';
+  // Strip port suffix.
+  s = s.split(':')[0] ?? '';
+  // Strip trailing dot (FQDN form).
+  s = s.replace(/\.$/, '');
+  return s;
 }

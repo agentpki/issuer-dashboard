@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { db, issuers, issuerKeys, domainProofs } from '@/lib/db';
 import { eq, and, desc, isNull } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
-import { generateKey, verifyDomain } from './actions';
+import { generateKey, verifyDomain, deleteIssuer } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -242,6 +242,49 @@ ISSUER_PRIVATE_KEY_HEX = <click "Reveal →" in the keys table above>`}
           </p>
         </>
       )}
+
+      {/* ─── Danger zone: delete issuer ─── */}
+      <details
+        style={{
+          marginTop: '3rem',
+          padding: '1rem 1.25rem',
+          background: 'rgba(248, 113, 113, 0.04)',
+          border: '1px solid rgba(248, 113, 113, 0.25)',
+          borderRadius: '0.5rem',
+        }}
+      >
+        <summary style={{ cursor: 'pointer', color: 'var(--danger)', fontWeight: 500 }}>
+          Danger zone
+        </summary>
+        <div style={{ marginTop: '1rem' }}>
+          <p className="muted" style={{ marginTop: 0 }}>
+            Delete this issuer. This removes the issuer row plus all associated signing
+            keys, domain-proof attempts, and mint audit records. <strong>Irreversible.</strong>{' '}
+            The domain becomes available for re-registration by you or anyone else.
+          </p>
+          <p className="dim small">
+            If you registered the wrong domain (e.g. you entered <code>www.example.com</code>{' '}
+            instead of <code>example.com</code>), delete this and create a fresh issuer at the
+            correct root domain.
+          </p>
+          <form action={deleteIssuer.bind(null, iss.id)} style={{ marginTop: '1rem' }}>
+            <button
+              type="submit"
+              style={{
+                background: 'rgba(248, 113, 113, 0.15)',
+                color: 'var(--danger)',
+                border: '1px solid rgba(248, 113, 113, 0.5)',
+                padding: '0.5rem 1rem',
+                borderRadius: '0.375rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+              }}
+            >
+              Delete issuer {iss.domain}
+            </button>
+          </form>
+        </div>
+      </details>
     </>
   );
 }

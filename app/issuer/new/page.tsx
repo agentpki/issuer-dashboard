@@ -30,12 +30,14 @@ export default async function NewIssuer() {
             type="text"
             name="domain"
             required
-            pattern="[a-z0-9][a-z0-9.\-]*\.[a-z]{2,}"
             placeholder="your-co.com"
             className="mono"
           />
           <p className="dim" style={{ fontSize: '0.75rem', marginTop: '0.375rem' }}>
-            Lowercase, no <code>https://</code>, no trailing slash. Must be a domain you control.
+            Use the <strong>root domain only</strong> — e.g. <code>acme.com</code>, not{' '}
+            <code>www.acme.com</code> or <code>https://acme.com/</code>. We strip{' '}
+            <code>www.</code>, <code>https://</code>, and paths automatically; the issuer is
+            always registered at the root.
           </p>
         </div>
 

@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { db, issuers, issuerKeys, domainProofs } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import {
   generateKeyPair,
   publicKeyToSpkiBase64,
@@ -104,6 +105,22 @@ export async function generateKey(issuerId: string): Promise<void> {
   });
 
   revalidatePath(`/issuer/${issuerId}`);
+}
+
+export async function deleteIssuer(issuerId: string): Promise<void> {
+  const session = await auth();
+  if (!session?.user?.id) return;
+
+  const [iss] = await db.select().from(issuers).where(eq(issuers.id, issuerId));
+  if (!iss || iss.ownerId !== session.user.id) return;
+
+  // FK constraints on issuer_keys, domain_proofs, and mint_audit all
+  // declare ON DELETE CASCADE — a single DELETE on the issuer row
+  // tears down every child row in one transaction. No manual cleanup needed.
+  await db.delete(issuers).where(eq(issuers.id, issuerId));
+
+  revalidatePath('/dashboard');
+  redirect('/dashboard');
 }
 
 async function recordFailure(proofId: string, reason: string): Promise<void> {
