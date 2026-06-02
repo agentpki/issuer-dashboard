@@ -359,19 +359,101 @@ KEY_VALID_TO   = "${Math.floor(activeKey.validTo.getTime() / 1000)}"`}
                 </p>
               </li>
               <li style={{ marginBottom: '0.75rem' }}>
-                <strong>Reveal your private key</strong> — click the{' '}
-                <Link href={`/issuer/${iss.id}/key/${activeKey.kid}/reveal`}>
-                  Reveal →
-                </Link>{' '}
-                link in the keys table above. Copy the hex value (do <em>not</em> paste it into a
-                file or git-tracked anywhere; it'll go straight to a Cloudflare secret).
+                <strong>Reveal your private key.</strong> Click the link below — it opens a
+                page that shows your Ed25519 private key in hex, plus a ready-made wrangler
+                command you'll use in step 4:
+                <p style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                  <Link
+                    href={`/issuer/${iss.id}/key/${activeKey.kid}/reveal`}
+                    style={{
+                      display: 'inline-block',
+                      padding: '0.5rem 1rem',
+                      background: 'rgba(167, 139, 250, 0.15)',
+                      border: '1px solid rgba(167, 139, 250, 0.4)',
+                      borderRadius: '0.375rem',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Reveal private key for <code>{activeKey.kid}</code> →
+                  </Link>
+                </p>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                  <strong>What you'll see on the reveal page:</strong>
+                </p>
+                <ul className="dim small" style={{ marginTop: 0, marginBottom: '0.5rem', paddingLeft: '1.25rem' }}>
+                  <li>
+                    A red warning card at the top reminding you the value is a top-secret
+                    credential — anyone with it can mint passports as <code>{iss.domain}</code>.
+                  </li>
+                  <li>
+                    A <strong>"Private key (hex)"</strong> block — a 64-character hexadecimal
+                    string (32 bytes of Ed25519 seed). Looks like{' '}
+                    <code>a3f7…</code>. Don't worry about reading it; you don't need to.
+                  </li>
+                  <li>
+                    A <strong>"Wrangler one-liner"</strong> block — your hex already pre-inlined
+                    into a command:{' '}
+                    <code style={{ fontSize: '0.7rem' }}>echo "&lt;your-hex&gt;" | wrangler secret put ISSUER_PRIVATE_KEY_HEX</code>.{' '}
+                    This is what you'll use in step 4 — copy it now.
+                  </li>
+                  <li>
+                    A <strong>"Plain (non-secret) env vars"</strong> block — duplicate of what
+                    you already pasted into <code>wrangler.toml</code> in step 2. You can ignore
+                    it on this page.
+                  </li>
+                </ul>
+                <p className="dim small" style={{ marginTop: 0, marginBottom: '0.5rem' }}>
+                  <strong>What to do:</strong> click the "Wrangler one-liner" block to select it,
+                  copy it to your clipboard (<code>Ctrl+C</code> / <code>Cmd+C</code>), then come
+                  back here.
+                </p>
+                <p className="dim small" style={{ marginTop: 0, marginBottom: '0.5rem' }}>
+                  <strong>Security rules — read these:</strong>
+                </p>
+                <ul className="dim small" style={{ marginTop: 0, marginBottom: 0, paddingLeft: '1.25rem' }}>
+                  <li>
+                    <strong>Do not</strong> paste the hex into a file, a chat, a note app, an
+                    LLM, an email, or anywhere persisted. It's a clipboard-only value on its
+                    way to a Cloudflare secret.
+                  </li>
+                  <li>
+                    <strong>Do not</strong> commit it to git (the wrangler.toml you edited in
+                    step 2 does NOT contain the private key — that's the whole point of the
+                    "secret" pattern).
+                  </li>
+                  <li>
+                    <strong>Do not</strong> screenshot the reveal page.
+                  </li>
+                  <li>
+                    <strong>Close the reveal tab</strong> as soon as the wrangler command in
+                    step 4 succeeds. The value re-displays on reload — but every reload is one
+                    more place it could leak.
+                  </li>
+                  <li>
+                    If you suspect the key was exposed at any point (clipboard manager,
+                    accidental paste, etc.), come back to this issuer page, generate a new key,
+                    and revoke the old one. Then start step 3 over with the new key.
+                  </li>
+                </ul>
               </li>
               <li style={{ marginBottom: '0.75rem' }}>
-                <strong>Set the private key as a Cloudflare Worker secret:</strong>
+                <strong>Paste the wrangler one-liner from step 3</strong> into your terminal
+                (in the <code>real-issuer/</code> directory you cd'd into in step 1), then hit
+                Enter. The command looks like this — yours will have the actual hex inlined:
                 <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
-{`npx wrangler secret put ISSUER_PRIVATE_KEY_HEX
-# paste the hex value when prompted, hit Enter`}
+{`echo "<your-64-char-hex>" | npx wrangler secret put ISSUER_PRIVATE_KEY_HEX`}
                 </pre>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                  Wrangler reads the hex from stdin (no hidden prompt, no manual paste — clean).
+                  You'll see <code>✨ Success! Uploaded secret ISSUER_PRIVATE_KEY_HEX</code> on
+                  success. Now go back to the reveal tab and close it. The private key never
+                  touches disk on your machine.
+                </p>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                  <strong>Windows PowerShell note:</strong> the <code>echo "…" | …</code> form
+                  works in PowerShell too — <code>echo</code> is an alias for{' '}
+                  <code>Write-Output</code> and the pipe is native PS syntax. No change needed.
+                </p>
               </li>
               <li style={{ marginBottom: '0.75rem' }}>
                 <strong>Deploy the Worker:</strong>
