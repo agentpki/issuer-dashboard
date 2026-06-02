@@ -343,9 +343,35 @@ TTL:     Auto`}
             </p>
           </div>
 
-          <p className="muted" style={{ marginTop: '2rem', marginBottom: '0.75rem' }}>
-            <strong>Choose your path:</strong>
-          </p>
+          <div
+            style={{
+              marginTop: '2rem',
+              marginBottom: '1rem',
+              padding: '0.875rem 1.125rem',
+              borderLeft: '4px solid rgb(167, 139, 250)',
+              background: 'rgba(167, 139, 250, 0.08)',
+              borderRadius: '0 0.5rem 0.5rem 0',
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: '1.0625rem',
+                fontWeight: 600,
+                color: 'var(--text)',
+                letterSpacing: '-0.01em',
+              }}
+            >
+              👇 Choose your path
+            </p>
+            <p
+              className="dim small"
+              style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem' }}
+            >
+              Click one of the colored tabs below to view that path's setup.
+              Your pick is saved — next time you come back, the same one will be selected.
+            </p>
+          </div>
           <Tabs
             storageKey="agentpki-pathway-pref"
             defaultId="a"
