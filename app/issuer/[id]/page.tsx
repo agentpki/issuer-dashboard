@@ -1191,7 +1191,6 @@ http.createServer(async (req, res) => {
                 real-issuer/src
               </a> for reference implementations of each route in &lt;50 lines each.
             </p>
-          </div>
                   </>
                 ),
               },
