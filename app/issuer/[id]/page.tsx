@@ -384,6 +384,8 @@ TTL:     Auto`}
                   bg: 'rgba(167, 139, 250, 0.18)',
                   border: 'rgba(167, 139, 250, 0.5)',
                 },
+                panelBg: 'rgba(167, 139, 250, 0.05)',
+                panelBorder: 'rgba(167, 139, 250, 0.3)',
                 content: (
                   <>
                   <p>
@@ -1264,6 +1266,8 @@ http.createServer(async (req, res) => {
                   bg: 'rgba(34, 197, 94, 0.18)',
                   border: 'rgba(34, 197, 94, 0.5)',
                 },
+                panelBg: 'rgba(34, 197, 94, 0.05)',
+                panelBorder: 'rgba(34, 197, 94, 0.3)',
                 content: (
                   <>
           <p>

@@ -7,6 +7,10 @@ type Tab = {
   label: string;
   /** Color of the active tab pill (text + background tint + border). Optional — defaults to accent purple. */
   color?: { text: string; bg: string; border: string };
+  /** Optional tinted background + border for the active panel. Use to make
+   *  the selected path's content area visually distinct from siblings. */
+  panelBg?: string;
+  panelBorder?: string;
   content: ReactNode;
 };
 
@@ -78,15 +82,27 @@ export function Tabs({
           />
         ))}
       </div>
-      {tabs.map((t) => (
-        <div
-          key={t.id}
-          role="tabpanel"
-          style={{ display: active === null || active === t.id ? 'block' : 'none' }}
-        >
-          {t.content}
-        </div>
-      ))}
+      {tabs.map((t) => {
+        const isActive = active === t.id;
+        const hasPanelTint = !!t.panelBg;
+        return (
+          <div
+            key={t.id}
+            role="tabpanel"
+            style={{
+              display: active === null || isActive ? 'block' : 'none',
+              ...(hasPanelTint && {
+                background: t.panelBg,
+                border: t.panelBorder ? `1px solid ${t.panelBorder}` : undefined,
+                borderRadius: '0.75rem',
+                padding: '1.25rem 1.5rem',
+              }),
+            }}
+          >
+            {t.content}
+          </div>
+        );
+      })}
     </div>
   );
 }
