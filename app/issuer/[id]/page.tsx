@@ -357,7 +357,13 @@ curl "https://${iss.domain}/mint?sub=test&scope=read&lifetime=300"`}
                 </pre>
                 <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
                   First call should return your directory JSON; second should return a signed
-                  passport.
+                  passport.{' '}
+                  <strong>Windows PowerShell note:</strong> <code>curl</code> in PowerShell is an
+                  alias for <code>Invoke-WebRequest</code>, which has different flags and output
+                  formatting. Use <code>curl.exe</code> (forces the real curl that ships with
+                  Windows 10+) or just paste the GET URL into a browser tab — both work for these
+                  read-only tests. On macOS/Linux/WSL/Git Bash, plain <code>curl</code> works as
+                  written.
                 </p>
               </li>
             </ol>
@@ -438,7 +444,13 @@ curl "https://${iss.domain}/mint?sub=test&scope=read&lifetime=300"`}
                   Look for <code>HTTP 200</code> + <code>Content-Type: application/json</code>{' '}
                   in the headers, and the directory JSON in the body. Once that works, your
                   issuer is discoverable by every verifier on the web — including{' '}
-                  <code>verify.agentpki.dev</code>.
+                  <code>verify.agentpki.dev</code>.{' '}
+                  <strong>Windows PowerShell note:</strong> <code>curl</code> is aliased to{' '}
+                  <code>Invoke-WebRequest</code> which doesn't accept <code>-i</code>. Use{' '}
+                  <code>curl.exe -i …</code> (forces the real curl bundled with Windows 10+) or
+                  in PowerShell native syntax:{' '}
+                  <code>(Invoke-WebRequest URL).RawContent</code>. On macOS/Linux/WSL/Git Bash,
+                  plain <code>curl -i</code> works as written.
                 </p>
               </li>
             </ol>
