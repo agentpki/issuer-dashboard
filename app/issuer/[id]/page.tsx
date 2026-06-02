@@ -308,8 +308,43 @@ pnpm install`}
                 </p>
               </li>
               <li style={{ marginBottom: '0.75rem' }}>
-                <strong>Edit <code>wrangler.toml</code></strong> and replace the placeholder
-                values with these (these are the public ones — not secret):
+                <strong>Open <code>wrangler.toml</code></strong> in any text editor and replace
+                the placeholder values with these (these are the public ones — not secret):
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                  <strong>Where is it?</strong> After step 1, you're already in the{' '}
+                  <code>real-issuer/</code> folder. <code>wrangler.toml</code> is a single file
+                  at the root of that folder — same level as <code>package.json</code> and{' '}
+                  <code>src/</code>. To open it:
+                </p>
+                <ul className="dim small" style={{ marginTop: 0, marginBottom: '0.5rem', paddingLeft: '1.25rem' }}>
+                  <li>
+                    <strong>VS Code:</strong> <code>code wrangler.toml</code> (if you have the{' '}
+                    <code>code</code> command on your PATH — installed via Cmd+Shift+P → "Shell
+                    Command: Install 'code' command in PATH" on macOS), or <code>code .</code>{' '}
+                    to open the whole folder then click <code>wrangler.toml</code> in the sidebar
+                  </li>
+                  <li>
+                    <strong>Cursor/Sublime/etc:</strong> same idea — <code>cursor wrangler.toml</code>,{' '}
+                    <code>subl wrangler.toml</code>
+                  </li>
+                  <li>
+                    <strong>macOS TextEdit:</strong> <code>open -a TextEdit wrangler.toml</code>
+                  </li>
+                  <li>
+                    <strong>Windows Notepad:</strong> <code>notepad wrangler.toml</code> in
+                    PowerShell, or right-click the file in File Explorer → Open with → Notepad
+                  </li>
+                  <li>
+                    <strong>Terminal-only editors:</strong>{' '}
+                    <code>nano wrangler.toml</code> /{' '}
+                    <code>vim wrangler.toml</code> if you're comfortable with those
+                  </li>
+                </ul>
+                <p className="dim small" style={{ marginTop: 0, marginBottom: '0.5rem' }}>
+                  Inside the file you'll see a section starting with <code>[vars]</code> and
+                  some placeholder values (e.g., <code>ISSUER_DOMAIN = "your-co.com"</code>).
+                  Replace that whole <code>[vars]</code> block with what's below:
+                </p>
                 <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
 {`[vars]
 ISSUER_DOMAIN  = "${iss.domain}"
@@ -319,6 +354,9 @@ KID            = "${activeKey.kid}"
 KEY_VALID_FROM = "${Math.floor(activeKey.validFrom.getTime() / 1000)}"
 KEY_VALID_TO   = "${Math.floor(activeKey.validTo.getTime() / 1000)}"`}
                 </pre>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                  Save the file (<code>Ctrl+S</code> / <code>Cmd+S</code>) and close the editor.
+                </p>
               </li>
               <li style={{ marginBottom: '0.75rem' }}>
                 <strong>Reveal your private key</strong> — click the{' '}
