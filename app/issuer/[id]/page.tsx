@@ -202,16 +202,20 @@ TTL:     Auto`}
         <>
           <h2>3. Publish your well-known directory</h2>
 
-          {/* What this is + why it matters — the explainer that was missing */}
+          {/* What this is + why it matters — the explainer that was missing.
+              Light-green tint distinguishes it from the violet "What is an issuer?"
+              card on /dashboard. */}
           <div
             className="card"
             style={{
-              background: 'rgba(167, 139, 250, 0.04)',
-              border: '1px solid rgba(167, 139, 250, 0.25)',
+              background: 'rgba(34, 197, 94, 0.06)',
+              border: '1px solid rgba(34, 197, 94, 0.3)',
               marginBottom: '1.5rem',
             }}
           >
-            <h3 style={{ marginTop: 0, fontSize: '1rem' }}>What this step does</h3>
+            <h3 style={{ marginTop: 0, fontSize: '1rem', color: 'var(--success)' }}>
+              What this step does
+            </h3>
             <p className="muted" style={{ marginTop: '0.5rem' }}>
               Any verifier (a site, an API, a bot-defense vendor) that receives a passport
               signed by your issuer needs to <strong>fetch your public key</strong> to check
@@ -274,47 +278,104 @@ TTL:     Auto`}
 
           <h3 style={{ marginTop: '2rem' }}>Path A — fork the real-issuer Worker (recommended)</h3>
           <p>
-            <strong>What you'll do:</strong> clone{' '}
-            <a href="https://github.com/agentpki/real-issuer">github.com/agentpki/real-issuer</a>,
-            set the values below as Cloudflare secrets, run <code>wrangler deploy</code>. Takes
-            about 10 minutes end-to-end.
-          </p>
-          <p>
             <strong>What you'll get:</strong> a Worker at <code>{iss.domain}</code> that exposes{' '}
-            <code>/.well-known/agentpki-issuer.json</code> (the directory), <code>/.well-known/agentpki-crl.json</code> (the
-            revocation list), <code>/mint</code> (mint passports for your agents), and{' '}
+            <code>/.well-known/agentpki-issuer.json</code> (the directory),{' '}
+            <code>/.well-known/agentpki-crl.json</code> (the revocation list),{' '}
+            <code>/mint</code> (mint passports for your agents), and{' '}
             <code>/abuse</code> (abuse-report intake). Full spec §3-§7 compliant.
           </p>
-          <pre>
-{`ISSUER_DOMAIN     = "${iss.domain}"
-ISSUER_NAME       = "${iss.name}"
-ISSUER_TIER       = "${iss.tier}"
-KID               = "${activeKey.kid}"
-KEY_VALID_FROM    = "${Math.floor(activeKey.validFrom.getTime() / 1000)}"
-KEY_VALID_TO      = "${Math.floor(activeKey.validTo.getTime() / 1000)}"
-
-# private key (treat as secret — set via wrangler secret put):
-ISSUER_PRIVATE_KEY_HEX = <click "Reveal →" in the keys table above>`}
-          </pre>
-          <p className="dim small">
-            After deploy, test by fetching <code>https://{iss.domain}/.well-known/agentpki-issuer.json</code>{' '}
-            in your browser — you should see the JSON below. Then mint a test passport via{' '}
-            <code>curl https://{iss.domain}/mint?sub=test&scope=read</code>.
+          <p className="muted">
+            <strong>Time:</strong> about 10 minutes if you have <code>git</code>, Node, and a
+            Cloudflare account ready.
           </p>
+
+          <div className="card" style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+            <ol style={{ margin: 0, paddingLeft: '1.25rem' }}>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Clone the template repo</strong> and enter it:
+                <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+{`git clone https://github.com/agentpki/real-issuer.git
+cd real-issuer
+pnpm install`}
+                </pre>
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Edit <code>wrangler.toml</code></strong> and replace the placeholder
+                values with these (these are the public ones — not secret):
+                <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+{`[vars]
+ISSUER_DOMAIN  = "${iss.domain}"
+ISSUER_NAME    = "${iss.name}"
+ISSUER_TIER    = "${iss.tier}"
+KID            = "${activeKey.kid}"
+KEY_VALID_FROM = "${Math.floor(activeKey.validFrom.getTime() / 1000)}"
+KEY_VALID_TO   = "${Math.floor(activeKey.validTo.getTime() / 1000)}"`}
+                </pre>
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Reveal your private key</strong> — click the{' '}
+                <Link href={`/issuer/${iss.id}/key/${activeKey.kid}/reveal`}>
+                  Reveal →
+                </Link>{' '}
+                link in the keys table above. Copy the hex value (do <em>not</em> paste it into a
+                file or git-tracked anywhere; it'll go straight to a Cloudflare secret).
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Set the private key as a Cloudflare Worker secret:</strong>
+                <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+{`npx wrangler secret put ISSUER_PRIVATE_KEY_HEX
+# paste the hex value when prompted, hit Enter`}
+                </pre>
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Deploy the Worker:</strong>
+                <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+{`npx wrangler deploy`}
+                </pre>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                  Wrangler prints the temporary <code>*.workers.dev</code> URL on success.
+                </p>
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Attach your custom domain.</strong> In the Cloudflare dashboard:
+                Workers &amp; Pages → your new Worker → Settings → Triggers → Custom Domains →
+                add <code>{iss.domain}</code>. Cloudflare auto-provisions the TLS cert (~30 sec).
+              </li>
+              <li>
+                <strong>Test:</strong>
+                <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+{`curl https://${iss.domain}/.well-known/agentpki-issuer.json
+curl "https://${iss.domain}/mint?sub=test&scope=read&lifetime=300"`}
+                </pre>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                  First call should return your directory JSON; second should return a signed
+                  passport.
+                </p>
+              </li>
+            </ol>
+          </div>
 
           <h3 style={{ marginTop: '2rem' }}>Path B — static JSON (verify-only, no minting)</h3>
           <p>
-            <strong>What you'll do:</strong> host the JSON file below at{' '}
-            <code>{fqdn}/.well-known/agentpki-issuer.json</code> on any static host. No Worker
-            needed.
-          </p>
-          <p>
-            <strong>What this gets you:</strong> verifiers can validate passports signed by your
-            key. <strong>You will NOT be able to mint new passports through this URL</strong> —
-            you'd need to sign tokens yourself (using the SDK's <code>mintPassport()</code> or
+            <strong>What you'll get:</strong> verifiers can validate passports signed by your
+            key.{' '}
+            <strong>
+              You will NOT be able to mint new passports through this URL
+            </strong>{' '}
+            — you'd need to sign tokens yourself (using the SDK's <code>mintPassport()</code> or
             your own service) and distribute them out-of-band.
           </p>
-          <pre>
+          <p className="muted">
+            <strong>Time:</strong> about 2 minutes if you already have a static host (Vercel,
+            Netlify, S3, GitHub Pages, etc.).
+          </p>
+
+          <div className="card" style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+            <ol style={{ margin: 0, paddingLeft: '1.25rem' }}>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Save the JSON below to a file</strong> named exactly{' '}
+                <code>agentpki-issuer.json</code> (case matters):
+                <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
 {JSON.stringify(
   {
     v: 1,
@@ -340,13 +401,40 @@ ISSUER_PRIVATE_KEY_HEX = <click "Reveal →" in the keys table above>`}
   null,
   2,
 )}
-          </pre>
-          <p className="dim small">
-            After publishing, test by visiting <code>https://{iss.domain}/.well-known/agentpki-issuer.json</code>{' '}
-            in your browser. Once it returns this JSON, your issuer is discoverable by every
-            verifier on the web — including <code>verify.agentpki.dev</code>. Try minting a token
-            with the SDK locally and send it to the verifier to confirm.
-          </p>
+                </pre>
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Upload it to your static host</strong> so it's served at exactly:
+                <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+{`https://${iss.domain}/.well-known/agentpki-issuer.json`}
+                </pre>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                  The path matters — verifiers look at this exact URL. On Vercel/Netlify, put
+                  the file at <code>public/.well-known/agentpki-issuer.json</code> in your
+                  repo. On S3, the object key is <code>.well-known/agentpki-issuer.json</code>.
+                  On GitHub Pages, drop it under <code>.well-known/</code> in the published branch.
+                </p>
+              </li>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Make sure it's served as JSON.</strong> Most hosts auto-set{' '}
+                <code>Content-Type: application/json</code> by extension. If yours doesn't, add a
+                rewrite rule so the response includes that header — verifiers will reject
+                <code>text/plain</code>.
+              </li>
+              <li>
+                <strong>Test:</strong>
+                <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+{`curl -i https://${iss.domain}/.well-known/agentpki-issuer.json`}
+                </pre>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                  Look for <code>HTTP 200</code> + <code>Content-Type: application/json</code>{' '}
+                  in the headers, and the directory JSON in the body. Once that works, your
+                  issuer is discoverable by every verifier on the web — including{' '}
+                  <code>verify.agentpki.dev</code>.
+                </p>
+              </li>
+            </ol>
+          </div>
 
           {/* What happens next */}
           <h3 style={{ marginTop: '2rem' }}>What happens after you publish</h3>

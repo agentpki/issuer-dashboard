@@ -34,11 +34,21 @@ export default async function Dashboard() {
         <h3 style={{ marginTop: 0, fontSize: '1rem' }}>What is an issuer?</h3>
         <p className="muted" style={{ marginTop: '0.5rem', marginBottom: '0.75rem' }}>
           An <strong>issuer</strong> is your organization's identity in AgentPKI — pinned to a
-          domain you control (e.g. <code>acme.com</code>). Each issuer can mint short-lived
-          cryptographic <strong>passports</strong> for the AI agents you operate, signing them
-          with your Ed25519 private key. Verifiers (sites, APIs, bot-defense vendors) check
-          your signature against the public key you publish at{' '}
+          domain you control (e.g. <code>acme.com</code>). Each issuer can mint cryptographic{' '}
+          <strong>passports</strong> for the AI agents you operate, signing them with your
+          Ed25519 private key. Verifiers (sites, APIs, bot-defense vendors) check your
+          signature against the public key you publish at{' '}
           <code>/.well-known/agentpki-issuer.json</code>.
+        </p>
+        <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: '0.75rem' }}>
+          <strong>About passport lifetimes:</strong> passports are{' '}
+          <strong>short-lived by design</strong> — typically minted with a{' '}
+          <strong>5-15 minute</strong> expiry (you choose at mint time). The spec caps the
+          maximum lifetime at <strong>1 hour</strong> (
+          <a href="https://agentpki.dev/spec/v0.2">spec §4.2</a>). Short lifetimes mean a leaked
+          passport stops working on its own within minutes — even if you don't notice the leak —
+          drastically reducing the blast radius compared to long-lived API keys. For revocation
+          before natural expiry, use the CRL endpoint your issuer publishes.
         </p>
         <p className="dim small" style={{ marginBottom: 0 }}>
           Three steps per issuer: <strong>1.</strong> register the domain →{' '}
