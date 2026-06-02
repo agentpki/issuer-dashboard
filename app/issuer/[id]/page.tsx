@@ -233,10 +233,70 @@ TTL:     Auto`}
             </p>
           </div>
 
+          {/* ─── Before you start: prerequisites + the subdomain recommendation ─── */}
+          <div
+            className="card"
+            style={{
+              background: 'rgba(251, 191, 36, 0.05)',
+              border: '1px solid rgba(251, 191, 36, 0.35)',
+              marginBottom: '1.5rem',
+            }}
+          >
+            <h3 style={{ marginTop: 0, fontSize: '1rem', color: 'rgb(251, 191, 36)' }}>
+              ⚠ Before you start — read this
+            </h3>
+            <p className="muted" style={{ marginTop: '0.5rem', marginBottom: '0.75rem' }}>
+              The single most common reason this step fails is a{' '}
+              <strong>CDN conflict</strong>: your domain ({iss.domain}) is already attached to
+              another provider (Vercel, Netlify, Squarespace, GitHub Pages, etc.), and that
+              provider intercepts traffic before your new Worker can serve it. You'll see
+              symptoms like <code>308 Permanent Redirect</code> or{' '}
+              <code>server: Vercel</code> in the response headers.
+            </p>
+            <p className="muted" style={{ marginTop: 0, marginBottom: '0.5rem' }}>
+              <strong>
+                Strongly recommended: use a subdomain instead of your bare domain.
+              </strong>
+            </p>
+            <p className="muted small" style={{ marginTop: 0, marginBottom: '0.5rem' }}>
+              Real issuers run on a dedicated subdomain like{' '}
+              <code>issuer.{iss.domain}</code>,{' '}
+              <code>agents.{iss.domain}</code>, or <code>id.{iss.domain}</code>. That way your
+              main domain ({iss.domain}) keeps doing whatever it does today, and the issuer
+              gets its own quiet corner with no fighting over routing. The well-known URL ends
+              up at e.g. <code>https://issuer.{iss.domain}/.well-known/agentpki-issuer.json</code>{' '}
+              — verifiers find it exactly the same way as if it were on the bare domain.
+            </p>
+            <p className="dim small" style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>
+              <strong>If you registered this issuer with the bare domain</strong> and want to
+              switch to a subdomain: scroll to the <strong>Danger zone</strong> at the bottom of
+              this page, delete this issuer, and create a fresh one with the subdomain (e.g.{' '}
+              <code>issuer.{iss.domain}</code>). It takes 2 minutes and saves you the routing
+              headache below.
+            </p>
+            <p className="dim small" style={{ marginTop: 0, marginBottom: '0.5rem' }}>
+              <strong>If you must use the bare domain</strong> ({iss.domain}) — that's fine,
+              but be aware: in Step 8 (attach custom domain) you may have to manually remove
+              the domain from your current CDN and delete a stale DNS record. Specific steps
+              for Vercel / Netlify / others are inline in Step 8 below.
+            </p>
+            <p className="dim small" style={{ marginTop: '0.75rem', marginBottom: 0 }}>
+              <strong>Other prerequisites:</strong> a Cloudflare account (free tier OK), Node
+              ≥ 16.13 installed, git installed, and a text editor. That's it.
+            </p>
+          </div>
+
           {/* Decision guide */}
           <h3 style={{ marginTop: '2rem' }}>Pick a path</h3>
           <p className="muted">
             Two ways to host the directory. Pick based on what you need:
+          </p>
+          <p className="dim small" style={{ marginTop: '-0.25rem', marginBottom: '0.75rem' }}>
+            <strong>Not sure?</strong> If you're building real AI agents that need to mint
+            passports → Path A. If you just want to be in the directory so verifiers know you
+            exist (e.g. publisher allow-listing your own crawler) → Path B. <strong>Path B is
+            significantly simpler</strong> — no Worker, no secrets, no KV namespace, no
+            wrangler. It's just a static JSON file you upload.
           </p>
           <div className="card" style={{ marginBottom: '1.5rem' }}>
             <table>
@@ -565,25 +625,189 @@ $s | npx wrangler secret put INTERNAL_MINT_SECRET`}
                   <code>https://{iss.domain}</code> and the well-known directory will be served
                   at <code>https://{iss.domain}/.well-known/agentpki-issuer.json</code>.
                 </p>
+
+                {/* CDN-conflict troubleshooting block */}
+                <div
+                  style={{
+                    marginTop: '1rem',
+                    padding: '0.75rem 1rem',
+                    background: 'rgba(251, 191, 36, 0.05)',
+                    border: '1px solid rgba(251, 191, 36, 0.3)',
+                    borderRadius: '0.5rem',
+                  }}
+                >
+                  <p style={{ margin: 0, fontWeight: 600, fontSize: '0.875rem', color: 'rgb(251, 191, 36)' }}>
+                    🛟 If "Add Domain" fails or you still get errors after attaching:
+                  </p>
+                  <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                    Most failures here come from another CDN (Vercel, Netlify, Squarespace, etc.)
+                    still claiming <code>{iss.domain}</code>. To fix:
+                  </p>
+                  <ol className="dim small" style={{ marginTop: 0, marginBottom: 0, paddingLeft: '1.25rem' }}>
+                    <li style={{ marginBottom: '0.4rem' }}>
+                      <strong>Cloudflare error: "A CNAME record already exists for this hostname"</strong>
+                      <br />
+                      → CF DNS → Records → find the CNAME for <code>{iss.domain}</code> pointing
+                      to e.g. <code>vercel-dns-*.com</code> or your old CDN → click ⋮ → Delete →
+                      retry the Add Domain step. (CF won't auto-replace existing CNAMEs.)
+                    </li>
+                    <li style={{ marginBottom: '0.4rem' }}>
+                      <strong>You get <code>308 Permanent Redirect</code> when curling the URL</strong>
+                      <br />
+                      → Run <code>curl.exe -i https://{iss.domain}/.well-known/agentpki-issuer.json</code>{' '}
+                      and look at the <code>server:</code> header. If it says{' '}
+                      <code>Vercel</code> / <code>Netlify</code> / etc., that CDN still owns
+                      the domain at its edge — remove the domain from your project there{' '}
+                      <strong>before</strong> CF can take over.
+                    </li>
+                    <li style={{ marginBottom: '0.4rem' }}>
+                      <strong>How to remove from Vercel:</strong> vercel.com → click the project
+                      that owns the domain → Settings → Domains → ⋮ next to{' '}
+                      <code>{iss.domain}</code> → Remove. (Don't delete the project itself —
+                      that kills the app.) The Vercel-given URL{' '}
+                      <code>your-project.vercel.app</code> keeps working.
+                    </li>
+                    <li style={{ marginBottom: '0.4rem' }}>
+                      <strong>How to remove from Netlify:</strong> app.netlify.com → site →
+                      Site configuration → Domain management → remove the custom domain.
+                    </li>
+                    <li>
+                      <strong>Once the other CDN releases the domain</strong> + you've deleted
+                      the stale CNAME (step 1 above), retry the CF Custom Domain attach. It
+                      should succeed in ~30 sec.
+                    </li>
+                  </ol>
+                  <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                    <strong>Want to skip all this entirely?</strong> Delete this issuer and
+                    create a new one with a <em>subdomain</em> (e.g.{' '}
+                    <code>issuer.{iss.domain}</code>) that's not claimed by any other CDN. The{' '}
+                    <strong>"Before you start"</strong> callout above explains the trade-off.
+                  </p>
+                </div>
               </li>
-              <li>
-                <strong>Test:</strong>
+              <li style={{ marginBottom: '0.75rem' }}>
+                <strong>Verify the directory is live at your domain:</strong>
                 <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
-{`curl https://${iss.domain}/.well-known/agentpki-issuer.json
-curl "https://${iss.domain}/mint?sub=test&scope=read&lifetime=300"`}
+{`curl https://${iss.domain}/.well-known/agentpki-issuer.json`}
                 </pre>
                 <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
-                  First call should return your directory JSON; second should return a signed
-                  passport.{' '}
-                  <strong>Windows PowerShell note:</strong> <code>curl</code> in PowerShell is an
-                  alias for <code>Invoke-WebRequest</code>, which has different flags and output
-                  formatting. Use <code>curl.exe</code> (forces the real curl that ships with
-                  Windows 10+) or just paste the GET URL into a browser tab — both work for these
-                  read-only tests. On macOS/Linux/WSL/Git Bash, plain <code>curl</code> works as
-                  written.
+                  Should return your directory JSON (the same one you saw at the{' '}
+                  <code>*.workers.dev</code> URL).{' '}
+                  <strong>Windows PowerShell:</strong> use <code>curl.exe</code> (not bare{' '}
+                  <code>curl</code>, which is <code>Invoke-WebRequest</code>) or paste the URL
+                  into a browser tab.
+                </p>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                  If you see <code>308 Permanent Redirect</code> or another CDN's server header,
+                  go back to step 6's troubleshooting section.
                 </p>
               </li>
+              <li>
+                <strong>Close the loop end-to-end — mint a passport and verify it:</strong>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                  This is the moment your independently-deployed Worker proves it actually
+                  works. We mint a test passport via your <code>/mint</code> endpoint, then send
+                  it to the production verifier at <code>verify.agentpki.dev</code>. If the
+                  verifier returns <code>verdict: allow</code>, your loop is closed.
+                </p>
+                <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+{`# 1. Mint a passport (replace <YOUR_MINT_SECRET> with the value from step 4)
+curl -X POST https://${iss.domain}/mint \\
+  -H "Authorization: Bearer <YOUR_MINT_SECRET>" \\
+  -H "Content-Type: application/json" \\
+  -d '{"sub":"agent:test","scope":["read"],"lifetime":300}'
+
+# 2. Copy the "token" from the response above, then send it to verify:
+curl -X POST https://verify.agentpki.dev/v1/verify \\
+  -H "Content-Type: application/json" \\
+  -d '{"token":"<paste-token-from-step-1>"}'`}
+                </pre>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                  <strong>Expected result:</strong>{' '}
+                  <code style={{ color: 'var(--success)' }}>
+                    {'{ "verdict": "allow", "passport": { "iss": "'}{iss.domain}{'", ... } }'}
+                  </code>
+                </p>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                  <strong>If verdict is allow:</strong> 🎉 your issuer is fully operational.
+                  Your agents can mint passports against it, and every verifier on the web —
+                  including bot-defense vendors, sites, APIs — can validate them. No shared
+                  keys, no central authority, just open-protocol cryptography.
+                </p>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                  <strong>Windows PowerShell version</strong> of the same two commands:
+                </p>
+                <pre style={{ marginTop: '0.25rem', marginBottom: 0, fontSize: '0.75rem' }}>
+{`# 1. Mint
+$mint = Invoke-RestMethod -Method POST -Uri "https://${iss.domain}/mint" \`
+  -Headers @{ Authorization = "Bearer <YOUR_MINT_SECRET>" } \`
+  -ContentType "application/json" \`
+  -Body '{"sub":"agent:test","scope":["read"],"lifetime":300}'
+$mint.token
+
+# 2. Verify
+$verify = Invoke-RestMethod -Method POST -Uri "https://verify.agentpki.dev/v1/verify" \`
+  -ContentType "application/json" \`
+  -Body (@{ token = $mint.token } | ConvertTo-Json)
+$verify`}
+                </pre>
+              </li>
             </ol>
+          </div>
+
+          {/* Universal debug help — applies to any wall hit during Path A */}
+          <div
+            className="card"
+            style={{
+              background: 'rgba(96, 165, 250, 0.05)',
+              border: '1px solid rgba(96, 165, 250, 0.3)',
+              marginTop: '1rem',
+              marginBottom: '1.5rem',
+            }}
+          >
+            <h3 style={{ marginTop: 0, fontSize: '1rem' }}>
+              🔧 Stuck? Open a debug window in 30 seconds
+            </h3>
+            <p className="muted small" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+              Run this in your <code>real-issuer</code> directory:
+            </p>
+            <pre style={{ marginTop: '0.25rem', marginBottom: '0.5rem' }}>
+{`npx wrangler tail`}
+            </pre>
+            <p className="muted small" style={{ marginTop: 0, marginBottom: '0.5rem' }}>
+              That streams live logs from your deployed Worker as you hit it. Open another
+              terminal and curl the URL — any exception will print with a file + line within ~1
+              second. 9 out of 10 silent failures get diagnosed this way.
+            </p>
+            <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+              <strong>Common errors and their fixes:</strong>
+            </p>
+            <ul className="dim small" style={{ marginTop: 0, marginBottom: 0, paddingLeft: '1.25rem' }}>
+              <li style={{ marginBottom: '0.4rem' }}>
+                <code>ISSUER_PRIVATE_KEY_HEX is not set</code> — re-run step 5. The most
+                common cause is bare <code>wrangler</code> vs <code>npx wrangler</code> — use{' '}
+                <code>npx wrangler</code>. Verify with <code>npx wrangler secret list</code>.
+              </li>
+              <li style={{ marginBottom: '0.4rem' }}>
+                <code>KV namespace 'EDIT-ME-...' is not valid</code> — you deployed before
+                pasting the real KV id into wrangler.toml. Re-run step 3, paste the id from the
+                output into the <code>[[kv_namespaces]]</code> block, redeploy.
+              </li>
+              <li style={{ marginBottom: '0.4rem' }}>
+                <code>Could not resolve "@agentpki/sdk"</code> — your <code>real-issuer</code>{' '}
+                clone is out of date. Pull the latest:{' '}
+                <code>cd real-issuer; git pull; rm -rf node_modules pnpm-lock.yaml; pnpm install</code>.
+              </li>
+              <li>
+                <code>308 Permanent Redirect</code> with <code>server: Vercel</code> (or other) —
+                another CDN still claims the domain. See step 6 troubleshooting.
+              </li>
+            </ul>
+            <p className="dim small" style={{ marginTop: '0.75rem', marginBottom: 0 }}>
+              Still stuck after trying the above? Email{' '}
+              <a href="mailto:hello@agentpki.dev">hello@agentpki.dev</a> with the{' '}
+              <code>wrangler tail</code> output and we'll unblock you.
+            </p>
           </div>
 
           <h3 style={{ marginTop: '2rem' }}>Path B — static JSON (verify-only, no minting)</h3>
