@@ -306,8 +306,12 @@ TTL:     Auto`}
               <thead>
                 <tr>
                   <th></th>
-                  <th>Path A — real-issuer Worker</th>
-                  <th>Path B — static JSON</th>
+                  <th style={{ color: 'rgb(196, 181, 253)', fontWeight: 700 }}>
+                    Path A — real-issuer Worker
+                  </th>
+                  <th style={{ color: 'rgb(110, 231, 183)', fontWeight: 700 }}>
+                    Path B — static JSON
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -339,7 +343,20 @@ TTL:     Auto`}
             </p>
           </div>
 
-          <h3 style={{ marginTop: '2rem' }}>Path A — deploy a real issuer (mint + verify)</h3>
+          <h3
+            style={{
+              marginTop: '2rem',
+              fontWeight: 700,
+              color: 'rgb(196, 181, 253)',
+              display: 'inline-block',
+              padding: '0.375rem 0.875rem',
+              background: 'rgba(167, 139, 250, 0.15)',
+              border: '1px solid rgba(167, 139, 250, 0.4)',
+              borderRadius: '0.5rem',
+            }}
+          >
+            Path A — deploy a real issuer (mint + verify)
+          </h3>
           <p>
             <strong>What you'll get:</strong> a server at <code>{iss.domain}</code> that exposes{' '}
             <code>/.well-known/agentpki-issuer.json</code> (the directory) and{' '}
@@ -1197,7 +1214,20 @@ http.createServer(async (req, res) => {
             ]}
           />
 
-          <h3 style={{ marginTop: '2rem' }}>Path B — static JSON (verify-only, no minting)</h3>
+          <h3
+            style={{
+              marginTop: '2rem',
+              fontWeight: 700,
+              color: 'rgb(110, 231, 183)',
+              display: 'inline-block',
+              padding: '0.375rem 0.875rem',
+              background: 'rgba(34, 197, 94, 0.15)',
+              border: '1px solid rgba(34, 197, 94, 0.4)',
+              borderRadius: '0.5rem',
+            }}
+          >
+            Path B — static JSON (verify-only, no minting)
+          </h3>
           <p>
             <strong>What you'll get:</strong> verifiers can validate passports signed by your
             key.{' '}
