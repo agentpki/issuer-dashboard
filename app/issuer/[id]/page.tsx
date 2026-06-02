@@ -5,6 +5,7 @@ import { eq, and, desc, isNull } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
 import { generateKey, verifyDomain, deleteIssuer } from './actions';
 import { SubmitButton } from '@/components/SubmitButton';
+import { OsTabs } from '@/components/OsTabs';
 
 export const dynamic = 'force-dynamic';
 
@@ -386,9 +387,56 @@ npm install`}
             </p>
 
             <p className="muted" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
-              <strong>Step 2 — paste this whole block. Windows PowerShell:</strong>
+              <strong>Step 2 — paste this whole block. Pick your shell:</strong>
             </p>
-            <pre style={{ marginTop: 0, marginBottom: '0.5rem', fontSize: '0.75rem' }}>
+            <OsTabs
+              unix={
+                <pre style={{ marginTop: 0, marginBottom: '0.5rem', fontSize: '0.75rem' }}>
+{`# Auto-bootstrap for issuer ${iss.domain}
+set -e
+
+# 1) Edit wrangler.toml
+sed -i.bak \\
+  -e 's|name = "agentpki-issuer"|name = "agentpki-issuer-${iss.domain.replace(/\./g, '-')}"|' \\
+  -e 's|ISSUER_DOMAIN = "your-issuer-domain.com"|ISSUER_DOMAIN = "${iss.domain}"|' \\
+  -e 's|ISSUER_NAME = "Your Company, Inc."|ISSUER_NAME = "${iss.name.replace(/"/g, '\\"')}"|' \\
+  -e 's|KID = "your-issuer-2026-q2"|KID = "${activeKey.kid}"|' \\
+  -e 's|KEY_VALID_FROM = "1714521600"|KEY_VALID_FROM = "${Math.floor(activeKey.validFrom.getTime() / 1000)}"|' \\
+  -e 's|KEY_VALID_TO   = "1893456000"|KEY_VALID_TO   = "${Math.floor(activeKey.validTo.getTime() / 1000)}"|' \\
+  -e 's|ABUSE_CONTACT_EMAIL    = "abuse@your-issuer-domain.com"|ABUSE_CONTACT_EMAIL    = "abuse@${iss.domain}"|' \\
+  -e 's|SECURITY_CONTACT_EMAIL = "security@your-issuer-domain.com"|SECURITY_CONTACT_EMAIL = "security@${iss.domain}"|' \\
+  wrangler.toml
+rm wrangler.toml.bak
+
+# 2) Create KV namespace and inject the id
+KV_ID=$(npx wrangler kv namespace create ISSUER_STATE 2>&1 | grep -oE 'id = "[a-f0-9]+"' | grep -oE '[a-f0-9]+')
+[ -z "$KV_ID" ] && { echo "Could not parse KV id"; exit 1; }
+sed -i.bak "s|PASTE-KV-NAMESPACE-ID-HERE|$KV_ID|" wrangler.toml
+rm wrangler.toml.bak
+echo "✅ KV namespace created: $KV_ID"
+
+# 3) Generate INTERNAL_MINT_SECRET
+MINT_SECRET=$(openssl rand -base64 48 | tr -d '\\n')
+echo ""
+echo "🔑 SAVE THIS — your agents will need it to call /mint:"
+echo "   $MINT_SECRET"
+echo ""
+echo "$MINT_SECRET" | npx wrangler secret put INTERNAL_MINT_SECRET
+
+# 4) Prompt for ISSUER_PRIVATE_KEY_HEX
+read -p "Paste your 64-char hex private key from the Reveal page: " PRIVATE_KEY
+echo "$PRIVATE_KEY" | tr -d '\\n' | npx wrangler secret put ISSUER_PRIVATE_KEY_HEX
+
+# 5) Deploy
+npx wrangler deploy
+
+echo ""
+echo "✅ DEPLOYED. Next: attach ${iss.domain} as a Custom Domain in CF Workers."
+echo "   Workers & Pages → agentpki-issuer-${iss.domain.replace(/\./g, '-')} → Domains tab → + Add"`}
+                </pre>
+              }
+              windows={
+                <pre style={{ marginTop: 0, marginBottom: '0.5rem', fontSize: '0.75rem' }}>
 {`# Auto-bootstrap for issuer ${iss.domain}
 $ErrorActionPreference = 'Stop'
 
@@ -433,54 +481,9 @@ npx wrangler deploy
 Write-Host ""
 Write-Host "✅ DEPLOYED. Next step: attach ${iss.domain} as a Custom Domain in CF Workers." -ForegroundColor Green
 Write-Host "   Workers & Pages → agentpki-issuer-${iss.domain.replace(/\./g, '-')} → Domains tab → + Add" -ForegroundColor Green`}
-            </pre>
-
-            <p className="muted" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
-              <strong>Or — macOS / Linux / WSL / Git Bash:</strong>
-            </p>
-            <pre style={{ marginTop: 0, marginBottom: '0.5rem', fontSize: '0.75rem' }}>
-{`# Auto-bootstrap for issuer ${iss.domain}
-set -e
-
-# 1) Edit wrangler.toml
-sed -i.bak \\
-  -e 's|name = "agentpki-issuer"|name = "agentpki-issuer-${iss.domain.replace(/\./g, '-')}"|' \\
-  -e 's|ISSUER_DOMAIN = "your-issuer-domain.com"|ISSUER_DOMAIN = "${iss.domain}"|' \\
-  -e 's|ISSUER_NAME = "Your Company, Inc."|ISSUER_NAME = "${iss.name.replace(/"/g, '\\"')}"|' \\
-  -e 's|KID = "your-issuer-2026-q2"|KID = "${activeKey.kid}"|' \\
-  -e 's|KEY_VALID_FROM = "1714521600"|KEY_VALID_FROM = "${Math.floor(activeKey.validFrom.getTime() / 1000)}"|' \\
-  -e 's|KEY_VALID_TO   = "1893456000"|KEY_VALID_TO   = "${Math.floor(activeKey.validTo.getTime() / 1000)}"|' \\
-  -e 's|ABUSE_CONTACT_EMAIL    = "abuse@your-issuer-domain.com"|ABUSE_CONTACT_EMAIL    = "abuse@${iss.domain}"|' \\
-  -e 's|SECURITY_CONTACT_EMAIL = "security@your-issuer-domain.com"|SECURITY_CONTACT_EMAIL = "security@${iss.domain}"|' \\
-  wrangler.toml
-rm wrangler.toml.bak
-
-# 2) Create KV namespace and inject the id
-KV_ID=$(npx wrangler kv namespace create ISSUER_STATE 2>&1 | grep -oE 'id = "[a-f0-9]+"' | grep -oE '[a-f0-9]+')
-[ -z "$KV_ID" ] && { echo "Could not parse KV id"; exit 1; }
-sed -i.bak "s|PASTE-KV-NAMESPACE-ID-HERE|$KV_ID|" wrangler.toml
-rm wrangler.toml.bak
-echo "✅ KV namespace created: $KV_ID"
-
-# 3) Generate INTERNAL_MINT_SECRET
-MINT_SECRET=$(openssl rand -base64 48 | tr -d '\\n')
-echo ""
-echo "🔑 SAVE THIS — your agents will need it to call /mint:"
-echo "   $MINT_SECRET"
-echo ""
-echo "$MINT_SECRET" | npx wrangler secret put INTERNAL_MINT_SECRET
-
-# 4) Prompt for ISSUER_PRIVATE_KEY_HEX
-read -p "Paste your 64-char hex private key from the Reveal page: " PRIVATE_KEY
-echo "$PRIVATE_KEY" | tr -d '\\n' | npx wrangler secret put ISSUER_PRIVATE_KEY_HEX
-
-# 5) Deploy
-npx wrangler deploy
-
-echo ""
-echo "✅ DEPLOYED. Next: attach ${iss.domain} as a Custom Domain in CF Workers."
-echo "   Workers & Pages → agentpki-issuer-${iss.domain.replace(/\./g, '-')} → Domains tab → + Add"`}
-            </pre>
+                </pre>
+              }
+            />
 
             <p className="dim small" style={{ marginTop: '1rem', marginBottom: 0 }}>
               <strong>What the script does, in order:</strong> patches{' '}
@@ -726,17 +729,23 @@ id = "abc123def456789..."   ← copy this id`}
                 your Worker's <code>/mint</code> endpoint (the public verifier endpoint is
                 wide-open; <code>/mint</code> is the private one). Generate and set it in one
                 line:
-                <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
-{`# macOS / Linux / WSL / Git Bash:
-openssl rand -base64 48 | npx wrangler secret put INTERNAL_MINT_SECRET
-
-# Windows PowerShell (works on both PS 5.1 / PS 7+):
+                <OsTabs
+                  unix={
+                    <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+{`openssl rand -base64 48 | npx wrangler secret put INTERNAL_MINT_SECRET`}
+                    </pre>
+                  }
+                  windows={
+                    <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+{`# Works on both PS 5.1 and PS 7+
 $bytes = New-Object byte[] 48
 [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
 $s = [Convert]::ToBase64String($bytes)
 Write-Host "SAVE THIS for your agents: $s"
 $s | npx wrangler secret put INTERNAL_MINT_SECRET`}
-                </pre>
+                    </pre>
+                  }
+                />
                 <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
                   Generates a 64-character base64 string, pipes it into Cloudflare as a secret,
                   and (on PowerShell) echoes it back once so you can save it to a password
@@ -868,7 +877,9 @@ $s | npx wrangler secret put INTERNAL_MINT_SECRET`}
                   it to the production verifier at <code>verify.agentpki.dev</code>. If the
                   verifier returns <code>verdict: allow</code>, your loop is closed.
                 </p>
-                <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                <OsTabs
+                  unix={
+                    <pre style={{ marginTop: '0.5rem', marginBottom: 0 }}>
 {`# 1. Mint a passport (replace <YOUR_MINT_SECRET> with the value from step 4)
 curl -X POST https://${iss.domain}/mint \\
   -H "Authorization: Bearer <YOUR_MINT_SECRET>" \\
@@ -879,23 +890,10 @@ curl -X POST https://${iss.domain}/mint \\
 curl -X POST https://verify.agentpki.dev/v1/verify \\
   -H "Content-Type: application/json" \\
   -d '{"token":"<paste-token-from-step-1>"}'`}
-                </pre>
-                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
-                  <strong>Expected result:</strong>{' '}
-                  <code style={{ color: 'var(--success)' }}>
-                    {'{ "verdict": "allow", "passport": { "iss": "'}{iss.domain}{'", ... } }'}
-                  </code>
-                </p>
-                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
-                  <strong>If verdict is allow:</strong> 🎉 your issuer is fully operational.
-                  Your agents can mint passports against it, and every verifier on the web —
-                  including bot-defense vendors, sites, APIs — can validate them. No shared
-                  keys, no central authority, just open-protocol cryptography.
-                </p>
-                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
-                  <strong>Windows PowerShell version</strong> of the same two commands:
-                </p>
-                <pre style={{ marginTop: '0.25rem', marginBottom: 0, fontSize: '0.75rem' }}>
+                    </pre>
+                  }
+                  windows={
+                    <pre style={{ marginTop: '0.5rem', marginBottom: 0, fontSize: '0.75rem' }}>
 {`# 1. Mint
 $mint = Invoke-RestMethod -Method POST -Uri "https://${iss.domain}/mint" \`
   -Headers @{ Authorization = "Bearer <YOUR_MINT_SECRET>" } \`
@@ -908,7 +906,21 @@ $verify = Invoke-RestMethod -Method POST -Uri "https://verify.agentpki.dev/v1/ve
   -ContentType "application/json" \`
   -Body (@{ token = $mint.token } | ConvertTo-Json)
 $verify`}
-                </pre>
+                    </pre>
+                  }
+                />
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                  <strong>Expected result:</strong>{' '}
+                  <code style={{ color: 'var(--success)' }}>
+                    {'{ "verdict": "allow", "passport": { "iss": "'}{iss.domain}{'", ... } }'}
+                  </code>
+                </p>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                  <strong>If verdict is allow:</strong> 🎉 your issuer is fully operational.
+                  Your agents can mint passports against it, and every verifier on the web —
+                  including bot-defense vendors, sites, APIs — can validate them. No shared
+                  keys, no central authority, just open-protocol cryptography.
+                </p>
               </li>
             </ol>
           </div>
