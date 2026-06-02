@@ -538,8 +538,29 @@ $s = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::Ge
               </li>
               <li style={{ marginBottom: '0.75rem' }}>
                 <strong>Attach your custom domain.</strong> In the Cloudflare dashboard:
-                Workers &amp; Pages → your new Worker → Settings → Triggers → Custom Domains →
-                add <code>{iss.domain}</code>. Cloudflare auto-provisions the TLS cert (~30 sec).
+                <ol style={{ marginTop: '0.5rem', marginBottom: '0.5rem', paddingLeft: '1.25rem' }}>
+                  <li>Go to <strong>Workers &amp; Pages</strong> in the left sidebar</li>
+                  <li>Click your newly-deployed Worker (the name you set in step 2)</li>
+                  <li>
+                    Click the <strong>Domains</strong> tab in the top nav (between{' '}
+                    <em>Observability</em> and <em>Settings</em>). Note: as of mid-2026,
+                    Cloudflare moved Custom Domains out of Settings → Triggers into its own
+                    top-level tab.
+                  </li>
+                  <li>
+                    Under <strong>Custom Domains</strong>, click <strong>+ Add</strong> and
+                    enter <code>{iss.domain}</code>
+                  </li>
+                  <li>
+                    Click <strong>Add Domain</strong>. Cloudflare validates DNS + auto-provisions
+                    the TLS cert (~30 sec).
+                  </li>
+                </ol>
+                <p className="dim small" style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+                  Once it shows green, your Worker is reachable at{' '}
+                  <code>https://{iss.domain}</code> and the well-known directory will be served
+                  at <code>https://{iss.domain}/.well-known/agentpki-issuer.json</code>.
+                </p>
               </li>
               <li>
                 <strong>Test:</strong>
