@@ -37,8 +37,13 @@ export function OsTabs({
       setOs(stored);
       return;
     }
+    // Default to Windows. Mac/Linux users get switched to unix only if
+    // their UA explicitly says so — otherwise stay on Windows (matches
+    // the bigger Windows-share of HN dev visitors who run PowerShell).
     const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
-    setOs(/windows/i.test(ua) ? 'windows' : 'unix');
+    const isMac = /mac os x|macintosh|darwin/i.test(ua);
+    const isLinuxLike = /linux|x11|cros/i.test(ua) && !/android/i.test(ua);
+    setOs(isMac || isLinuxLike ? 'unix' : 'windows');
   }, []);
 
   const select = (next: OS) => {
@@ -62,23 +67,23 @@ export function OsTabs({
         }}
       >
         <TabButton
-          label={`🍎  ${unixLabel}`}
-          active={os === 'unix'}
-          onClick={() => select('unix')}
-        />
-        <TabButton
           label={`🪟  ${windowsLabel}`}
           active={os === 'windows'}
           onClick={() => select('windows')}
         />
+        <TabButton
+          label={`🍎  ${unixLabel}`}
+          active={os === 'unix'}
+          onClick={() => select('unix')}
+        />
       </div>
-      {/* During SSR + first paint, both render (so the page is correct
-          without JS); client effect picks one and hides the other. */}
-      <div style={{ display: os === null || os === 'unix' ? 'block' : 'none' }}>
-        {unix}
-      </div>
-      <div style={{ display: os === 'windows' ? 'block' : 'none' }}>
+      {/* During SSR + first paint, Windows renders (the default). The
+          client effect picks Mac/Linux only if UA says so. */}
+      <div style={{ display: os === null || os === 'windows' ? 'block' : 'none' }}>
         {windows}
+      </div>
+      <div style={{ display: os === 'unix' ? 'block' : 'none' }}>
+        {unix}
       </div>
     </div>
   );

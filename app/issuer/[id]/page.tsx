@@ -368,9 +368,21 @@ TTL:     Auto`}
               <code>INTERNAL_MINT_SECRET</code> for you, prompts once for your private key, and
               deploys. Total time: about 3 minutes.
             </p>
-            <p className="dim small" style={{ marginTop: 0, marginBottom: '0.75rem' }}>
-              <strong>Before pasting:</strong> have the <strong>Reveal private key</strong> page
-              open in another tab — you'll need to paste the 64-char hex when prompted.
+            <p
+              style={{
+                marginTop: 0,
+                marginBottom: '0.75rem',
+                padding: '0.625rem 0.875rem',
+                background: 'rgba(251, 191, 36, 0.1)',
+                borderLeft: '3px solid rgba(251, 191, 36, 0.7)',
+                borderRadius: '0 0.375rem 0.375rem 0',
+                fontSize: '0.875rem',
+                color: 'rgb(252, 211, 77)',
+              }}
+            >
+              <strong>⚠ Before pasting:</strong> have the{' '}
+              <strong>Reveal private key</strong> page open in another tab — you'll need to
+              paste the 64-char hex when prompted.
             </p>
 
             <p className="muted" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
@@ -381,9 +393,21 @@ TTL:     Auto`}
 cd real-issuer
 npm install`}
             </pre>
-            <p className="dim small" style={{ marginTop: 0, marginBottom: '0.75rem' }}>
-              (Use <code>npm install</code> — works on every machine. If you have{' '}
-              <code>pnpm</code> installed, <code>pnpm install</code> works too.)
+            <p
+              style={{
+                marginTop: 0,
+                marginBottom: '0.75rem',
+                padding: '0.625rem 0.875rem',
+                background: 'rgba(96, 165, 250, 0.1)',
+                borderLeft: '3px solid rgba(96, 165, 250, 0.7)',
+                borderRadius: '0 0.375rem 0.375rem 0',
+                fontSize: '0.875rem',
+                color: 'rgb(147, 197, 253)',
+              }}
+            >
+              <strong>💡 Tip:</strong> Use <code>npm install</code> — works on every machine
+              with Node installed. If you have <code>pnpm</code> available,{' '}
+              <code>pnpm install</code> also works.
             </p>
 
             <p className="muted" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>
