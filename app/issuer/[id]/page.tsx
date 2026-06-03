@@ -406,6 +406,8 @@ TTL:     Auto`}
                   bg: 'rgba(251, 146, 60, 0.18)',
                   border: 'rgba(251, 146, 60, 0.5)',
                 },
+                panelBg: 'rgba(251, 146, 60, 0.05)',
+                panelBorder: 'rgba(251, 146, 60, 0.3)',
                 content: (
                   <>
                   <p className="muted" style={{ marginTop: 0 }}>
@@ -1087,6 +1089,8 @@ $verify`}
                   bg: 'rgba(34, 211, 238, 0.18)',
                   border: 'rgba(34, 211, 238, 0.5)',
                 },
+                panelBg: 'rgba(34, 211, 238, 0.05)',
+                panelBorder: 'rgba(34, 211, 238, 0.3)',
                 content: (
                   <>
                   <p className="muted" style={{ marginTop: 0 }}>

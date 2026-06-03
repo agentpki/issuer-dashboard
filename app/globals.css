@@ -25,6 +25,9 @@ html, body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+  /* Prevent horizontal overflow from wide code blocks pushing the page
+     off-center on certain viewport widths. */
+  overflow-x: hidden;
 }
 
 a { color: var(--accent); text-decoration: none; }
@@ -41,11 +44,17 @@ pre {
   line-height: 1.5;
 }
 
-/* Container width: was 960px which left huge dead zones on 1440px+ displays.
-   Widened to 1400px for the dashboard surfaces that have code blocks, tables,
-   and the Path A/B tab system — those genuinely benefit from horizontal room.
-   Nav can take the same width since it just sits at the top. */
-.container { max-width: 1400px; margin: 0 auto; padding: 0 2rem; }
+/* Container: 1400px max, explicitly centered with both margin-left and
+   margin-right auto (handles edge cases where margin shorthand is overridden
+   by inline styles on the same element — e.g. <main style={{ paddingTop }}>). */
+.container {
+  width: 100%;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 2rem;
+  padding-right: 2rem;
+}
 
 /* On narrow displays, restore the tighter 1.5rem horizontal padding so
    content doesn't crowd the edges. */
