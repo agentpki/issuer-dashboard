@@ -41,7 +41,17 @@ pre {
   line-height: 1.5;
 }
 
-.container { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
+/* Container width: was 960px which left huge dead zones on 1440px+ displays.
+   Widened to 1400px for the dashboard surfaces that have code blocks, tables,
+   and the Path A/B tab system — those genuinely benefit from horizontal room.
+   Nav can take the same width since it just sits at the top. */
+.container { max-width: 1400px; margin: 0 auto; padding: 0 2rem; }
+
+/* On narrow displays, restore the tighter 1.5rem horizontal padding so
+   content doesn't crowd the edges. */
+@media (max-width: 768px) {
+  .container { padding: 0 1.25rem; }
+}
 
 button, .btn {
   font: inherit;
